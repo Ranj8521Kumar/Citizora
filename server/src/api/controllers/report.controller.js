@@ -154,7 +154,8 @@ exports.uploadReportImages = async (req, res, next) => {
     for (const file of req.files) {
       const downloadURL = await uploadToCloudinary(
         file.buffer,
-        file.originalname
+        file.originalname,
+        'report'
       );
 
       // Add image to report

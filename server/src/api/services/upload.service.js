@@ -56,13 +56,30 @@ const bufferToStream = (buffer) => {
  * Upload a file to Cloudinary
  * @param {Buffer} fileBuffer - File buffer
  * @param {String} fileName - File name
- * @param {String} mimeType - File MIME type
+ * @param {String} uploadType - Type of upload (report, fieldwork, etc.)
  * @returns {Promise<String>} URL of the uploaded file
  */
-const uploadToCloudinary = (fileBuffer, fileName) => {
+const uploadToCloudinary = (fileBuffer, fileName, uploadType = 'general') => {
   return new Promise((resolve, reject) => {
-    // Create a unique folder name based on date
-    const folder = 'civic-connect/uploads';
+    // Create folder based on upload type
+    let folder = 'civic-connect/uploads';
+
+    switch (uploadType) {
+      case 'fieldwork':
+        folder = 'civic-connect/fieldwork';
+        break;
+      case 'report':
+        folder = 'civic-connect/reports';
+        break;
+      case 'progress':
+        folder = 'civic-connect/fieldwork/progress';
+        break;
+      case 'completion':
+        folder = 'civic-connect/fieldwork/completion';
+        break;
+      default:
+        folder = 'civic-connect/uploads';
+    }
 
     // Create a unique public_id (filename without extension)
     const publicId = `${folder}/${Date.now()}-${fileName.split('.')[0]}`;
@@ -113,8 +130,46 @@ const deleteFromCloudinary = async (fileUrl) => {
   }
 };
 
+/**
+ * Upload field worker images with metadata
+ * @param {Array} files - Array of file objects
+ * @param {Object} metadata - Additional metadata for the upload
+ * @returns {Promise<Array>} Array of uploaded image objects
+ */
+const uploadFieldWorkerImages = async (files, metadata = {}) => {
+  try {
+    const uploadedImages = [];
+
+    for (const file of files) {
+      const downloadURL = await uploadToCloudinary(
+        file.buffer,
+        file.originalname,
+        metadata.uploadType || 'fieldwork'
+      );
+
+      uploadedImages.push({
+        url: downloadURL,
+        originalName: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype,
+        uploadType: metadata.uploadType || 'fieldwork',
+        location: metadata.location || null,
+        reportId: metadata.reportId || null,
+        description: metadata.description || '',
+        uploadedAt: new Date()
+      });
+    }
+
+    return uploadedImages;
+  } catch (error) {
+    console.error('Error uploading field worker images:', error);
+    throw new ApiError('Field worker image upload failed', 500);
+  }
+};
+
 module.exports = {
   upload,
   uploadToCloudinary,
-  deleteFromCloudinary
+  deleteFromCloudinary,
+  uploadFieldWorkerImages
 };

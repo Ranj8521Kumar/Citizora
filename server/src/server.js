@@ -20,6 +20,7 @@ const userRoutes = require('./api/routes/user.routes');
 const reportRoutes = require('./api/routes/report.routes');
 const mapRoutes = require('./api/routes/map.routes');
 const notificationRoutes = require('./api/routes/notification.routes');
+const fieldWorkerRoutes = require('./api/routes/fieldworker.routes');
 
 // Import middleware
 const { errorHandler } = require('./api/middleware/error.middleware');
@@ -62,6 +63,7 @@ app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/reports', authMiddleware, reportRoutes);
 app.use('/api/maps', authMiddleware, mapRoutes);
 app.use('/api/notifications', authMiddleware, notificationRoutes);
+app.use('/api/fieldworker', fieldWorkerRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Health check route

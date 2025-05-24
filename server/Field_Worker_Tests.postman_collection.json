@@ -1,0 +1,293 @@
+{
+  "info": {
+    "name": "Field Worker Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Field Worker Auth",
+      "item": [
+        {
+          "name": "Register Field Worker",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"FieldWorker\",\n  \"email\": \"fieldworker@example.com\",\n  \"password\": \"12345678\",\n  \"role\": \"employee\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login Field Worker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set(\"token\", response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"fieldworker@example.com\",\n  \"password\": \"12345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Field Worker Image Uploads",
+      "item": [
+        {
+          "name": "Upload Progress Images",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "reportId",
+                  "value": "{{reportId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Work in progress - fixing pothole",
+                  "type": "text"
+                },
+                {
+                  "key": "location",
+                  "value": "{\"coordinates\": [73.8567, 18.5204]}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fieldworker/images/progress",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fieldworker", "images", "progress"]
+            }
+          }
+        },
+        {
+          "name": "Upload Completion Images",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "reportId",
+                  "value": "{{reportId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Work completed - pothole fixed",
+                  "type": "text"
+                },
+                {
+                  "key": "markAsResolved",
+                  "value": "true",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fieldworker/images/completion",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fieldworker", "images", "completion"]
+            }
+          }
+        },
+        {
+          "name": "Upload General Field Work Images",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "description",
+                  "value": "General field work documentation",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "maintenance",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fieldworker/images/general",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fieldworker", "images", "general"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Field Worker Data Retrieval",
+      "item": [
+        {
+          "name": "Get Field Worker Images",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fieldworker/images?limit=10&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fieldworker", "images"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Assigned Reports",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fieldworker/reports",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fieldworker", "reports"]
+            }
+          }
+        },
+        {
+          "name": "Update Report Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\",\n  \"comment\": \"Started working on the issue\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fieldworker/reports/{{reportId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fieldworker", "reports", "{{reportId}}", "status"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

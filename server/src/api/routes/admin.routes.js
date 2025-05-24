@@ -53,4 +53,67 @@ router.post('/create', restrictToTrustedSources, adminController.createAdmin);
  */
 router.get('/admins', authMiddleware, restrictTo('admin'), adminController.getAdmins);
 
+/**
+ * @route GET /api/admin/dashboard/analytics
+ * @desc Get dashboard analytics data
+ * @access Private (admin only)
+ */
+router.get('/dashboard/analytics', authMiddleware, restrictTo('admin'), adminController.getDashboardAnalytics);
+
+/**
+ * @route GET /api/admin/users
+ * @desc Get all users with advanced filtering and pagination
+ * @access Private (admin only)
+ */
+router.get('/users', authMiddleware, restrictTo('admin'), adminController.getAllUsers);
+
+/**
+ * @route PATCH /api/admin/users/:userId/status
+ * @desc Activate or deactivate a user
+ * @access Private (admin only)
+ */
+router.patch('/users/:userId/status', authMiddleware, restrictTo('admin'), adminController.toggleUserStatus);
+
+/**
+ * @route PATCH /api/admin/users/:userId/role
+ * @desc Update user role
+ * @access Private (admin only)
+ */
+router.patch('/users/:userId/role', authMiddleware, restrictTo('admin'), adminController.updateUserRole);
+
+/**
+ * @route GET /api/admin/statistics
+ * @desc Get system statistics and reports
+ * @access Private (admin only)
+ */
+router.get('/statistics', authMiddleware, restrictTo('admin'), adminController.getSystemStatistics);
+
+/**
+ * @route POST /api/admin/reports/bulk-update-status
+ * @desc Bulk update report status
+ * @access Private (admin only)
+ */
+router.post('/reports/bulk-update-status', authMiddleware, restrictTo('admin'), adminController.bulkUpdateReportStatus);
+
+/**
+ * @route POST /api/admin/reports/bulk-assign
+ * @desc Bulk assign reports to field workers
+ * @access Private (admin only)
+ */
+router.post('/reports/bulk-assign', authMiddleware, restrictTo('admin'), adminController.bulkAssignReports);
+
+/**
+ * @route POST /api/admin/reports/bulk-delete
+ * @desc Bulk delete reports (soft delete by changing status to closed)
+ * @access Private (admin only)
+ */
+router.post('/reports/bulk-delete', authMiddleware, restrictTo('admin'), adminController.bulkDeleteReports);
+
+/**
+ * @route GET /api/admin/reports/search
+ * @desc Advanced search and filtering for reports
+ * @access Private (admin only)
+ */
+router.get('/reports/search', authMiddleware, restrictTo('admin'), adminController.advancedReportSearch);
+
 module.exports = router;

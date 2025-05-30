@@ -9,6 +9,8 @@ CivicConnect is a comprehensive digital platform designed to bridge the gap betw
 ## List of Figures
 
 **Figure 1:** Overall System Architecture Diagram
+![System design and Architecture](https://github.com/user-attachments/assets/7cc99344-70f3-4cbe-abe3-daf9e084da40)
+
 ---
 
 ## 1. Introduction

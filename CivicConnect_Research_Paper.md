@@ -6,6 +6,11 @@ CivicConnect is a comprehensive digital platform designed to bridge the gap betw
 
 **Keywords:** Civic Technology, Municipal Management, Digital Governance, Real-time Communication, Data Analytics, Web Application Development
 
+## List of Figures
+
+**Figure 1:** Overall System Architecture Diagram
+---
+
 ## 1. Introduction
 
 ### 1.1 Background and Motivation
@@ -48,7 +53,21 @@ Research indicates that real-time communication significantly improves citizen t
 
 ## 3. System Architecture and Design
 
-### 3.1 Technology Stack
+### 3.1 System Architecture Overview
+
+The CivicConnect platform follows a modern three-tier architecture with microservices-oriented design principles. The system is designed for scalability, maintainability, and high performance.
+
+**[INSERT FIGURE 1: Overall System Architecture Diagram]**
+*Figure 1: High-level system architecture showing the interaction between client applications, server components, and external services*
+
+---
+
+**[INSERT FIGURE 2: Component Interaction Diagram]**
+*Figure 2: Detailed component interaction diagram illustrating data flow between frontend, backend, database, and third-party services*
+
+---
+
+### 3.2 Technology Stack
 
 **Frontend Technologies:**
 - React.js for dynamic user interfaces
@@ -69,7 +88,21 @@ Research indicates that real-time communication significantly improves citizen t
 - Git for version control
 - Docker for containerization
 
-### 3.2 System Components
+**[INSERT FIGURE 3: Technology Stack Diagram]**
+*Figure 3: Complete technology stack visualization showing frontend, backend, database, and external service layers*
+
+---
+
+### 3.3 Database Architecture
+
+The system utilizes MongoDB as the primary database with a carefully designed schema optimized for performance and scalability.
+
+**[INSERT FIGURE 4: Database Schema Diagram]**
+*Figure 4: Entity Relationship Diagram (ERD) showing the database collections, relationships, and key indexes*
+
+---
+
+### 3.4 System Components
 
 #### 3.2.1 Citizen Portal
 - Issue reporting with multimedia support
@@ -105,6 +138,11 @@ The system utilizes a NoSQL MongoDB database with the following key collections:
 
 ### 4.1 Citizen Engagement Features
 
+**[INSERT FIGURE 5: Citizen Portal User Interface]**
+*Figure 5: Screenshots of the citizen portal showing report submission form, dashboard, and tracking interface*
+
+---
+
 **Report Submission:**
 - Multi-category issue reporting (roads, water, waste, etc.)
 - Photo and video upload capabilities
@@ -124,7 +162,17 @@ The system utilizes a NoSQL MongoDB database with the following key collections:
 - Discussion forums
 - Neighborhood-based filtering
 
+**[INSERT FIGURE 6: Report Submission Workflow]**
+*Figure 6: Flowchart showing the complete report submission process from citizen input to system processing*
+
+---
+
 ### 4.2 Administrative Management Tools
+
+**[INSERT FIGURE 7: Admin Dashboard Interface]**
+*Figure 7: Screenshots of the administrative dashboard showing analytics overview, user management, and report management interfaces*
+
+---
 
 **Advanced Dashboard Analytics:**
 - Real-time performance metrics
@@ -132,6 +180,11 @@ The system utilizes a NoSQL MongoDB database with the following key collections:
 - Geographic heat maps
 - Resource allocation insights
 - Comparative performance reports
+
+**[INSERT FIGURE 8: Analytics Dashboard Charts]**
+*Figure 8: Sample analytics charts showing report trends, performance metrics, and geographic distribution of issues*
+
+---
 
 **User Management System:**
 - Role-based access control
@@ -147,7 +200,17 @@ The system utilizes a NoSQL MongoDB database with the following key collections:
 - Priority-based queuing
 - Automated workflow triggers
 
+**[INSERT FIGURE 9: Report Management Interface]**
+*Figure 9: Screenshots showing advanced search filters, bulk operations interface, and report assignment workflow*
+
+---
+
 ### 4.3 Field Worker Capabilities
+
+**[INSERT FIGURE 10: Field Worker Mobile Interface]**
+*Figure 10: Screenshots of the mobile-optimized field worker interface showing task lists, status updates, and photo documentation features*
+
+---
 
 **Mobile-First Design:**
 - Responsive interface for mobile devices
@@ -161,6 +224,11 @@ The system utilizes a NoSQL MongoDB database with the following key collections:
 - Status update workflows
 - Time tracking capabilities
 - Performance metrics
+
+**[INSERT FIGURE 11: Field Worker Workflow Diagram]**
+*Figure 11: Flowchart showing the field worker task assignment, execution, and completion process*
+
+---
 
 ## 5. Implementation Methodology
 
@@ -237,6 +305,11 @@ The platform implements a sophisticated real-time communication system using Web
 
 ### 7.1 Testing Methodology
 
+**[INSERT FIGURE 12: Testing Framework Architecture]**
+*Figure 12: Diagram showing the comprehensive testing strategy including unit tests, integration tests, and performance testing*
+
+---
+
 **Unit Testing:**
 - Jest framework for component testing
 - 90%+ code coverage requirement
@@ -254,6 +327,11 @@ The platform implements a sophisticated real-time communication system using Web
 
 ### 7.2 Performance Benchmarks
 
+**[INSERT FIGURE 13: Performance Metrics Dashboard]**
+*Figure 13: Charts showing system performance metrics including response times, throughput, and resource utilization*
+
+---
+
 - Page load time: < 2 seconds
 - API response time: < 500ms
 - Real-time notification delivery: < 100ms
@@ -264,6 +342,11 @@ The platform implements a sophisticated real-time communication system using Web
 
 ### 8.1 System Capabilities
 
+**[INSERT FIGURE 14: System Impact Metrics]**
+*Figure 14: Comparative charts showing before/after implementation metrics including response times, citizen satisfaction, and operational efficiency*
+
+---
+
 The CivicConnect platform successfully demonstrates:
 - Efficient digital civic engagement
 - Streamlined administrative processes
@@ -272,6 +355,11 @@ The CivicConnect platform successfully demonstrates:
 - Scalable and maintainable architecture
 
 ### 8.2 Expected Benefits
+
+**[INSERT FIGURE 15: Stakeholder Benefits Analysis]**
+*Figure 15: Visual representation of benefits for different stakeholders (citizens, municipal authorities, field workers) with quantitative metrics*
+
+---
 
 **For Citizens:**
 - Improved access to municipal services

@@ -1,0 +1,194 @@
+import React, { useState, useMemo } from 'react';
+import { cn } from '../ui/utils.js';
+import { Button } from '../ui/button.jsx';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar.jsx';
+import { Badge } from '../ui/badge.jsx';
+import { 
+  Menu, 
+  Bell, 
+  Settings, 
+  ChevronLeft, 
+  ChevronRight,
+  BarChart3,
+  Users,
+  FileText,
+  UserCheck,
+  Shield,
+  Home
+} from 'lucide-react';
+
+const navigationItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: Home },
+  { id: 'analytics', label: 'Analytics Hub', icon: BarChart3 },
+  { id: 'users', label: 'User Management', icon: Users },
+  { id: 'reports', label: 'Report Management', icon: FileText },
+  { id: 'employees', label: 'Employee Assignment', icon: UserCheck },
+  { id: 'settings', label: 'System Administration', icon: Shield },
+];
+
+export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const currentPageTitle = useMemo(() => {
+    const currentItem = navigationItems.find(item => item.id === activeTab);
+    return currentItem?.label || 'Dashboard';
+  }, [activeTab]);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => !prev);
+  };
+
+  return (
+    <div className="h-screen flex bg-slate-50">
+      {/* Sidebar */}
+      <aside className={cn(
+        "bg-[#1E3A8A] text-white transition-all duration-300 flex flex-col shadow-lg",
+        sidebarCollapsed ? "w-16" : "w-64"
+      )}>
+        {/* Logo/Brand */}
+        <div className="p-6 border-b border-blue-800">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+              <Shield className="w-6 h-6 text-white" />
+            </div>
+            {!sidebarCollapsed && (
+              <div>
+                <h2 className="text-white">CivicConnect</h2>
+                <p className="text-blue-200 text-xs">Admin Portal</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4" role="navigation" aria-label="Main navigation">
+          <ul className="space-y-2">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              
+              return (
+                <li key={item.id}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start gap-3 h-12 text-blue-100 hover:bg-white/10 hover:text-white transition-colors",
+                      isActive && "bg-white/15 text-white",
+                      sidebarCollapsed && "justify-center"
+                    )}
+                    onClick={() => onTabChange(item.id)}
+                    aria-label={sidebarCollapsed ? item.label : undefined}
+                    title={sidebarCollapsed ? item.label : undefined}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {!sidebarCollapsed && <span>{item.label}</span>}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Collapse Button */}
+        <div className="p-4 border-t border-blue-800">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSidebar}
+            className="w-full justify-center text-blue-200 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 min-w-0">
+              <Button variant="ghost" size="sm" className="md:hidden">
+                <Menu className="w-5 h-5" />
+              </Button>
+              <div className="min-w-0">
+                <h1 className="text-xl text-gray-900 truncate">
+                  {currentPageTitle}
+                </h1>
+                <p className="text-sm text-gray-500">Municipal Administration Portal</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 flex-shrink-0">
+              {/* Notifications */}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="relative"
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs"
+                >
+                  3
+                </Badge>
+              </Button>
+              
+              {/* Settings */}
+              <Button 
+                variant="ghost" 
+                size="sm"
+                aria-label="Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+              
+              {/* User Profile */}
+              <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src="/placeholder-avatar.jpg" alt="Admin User" />
+                  <AvatarFallback>AD</AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block">
+                  <p className="text-sm text-gray-900">Admin User</p>
+                  <p className="text-xs text-gray-500">Super Administrator</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-auto p-6" role="main">
+          {children}
+        </main>
+
+        {/* Status Bar */}
+        <footer className="bg-white border-t border-gray-200 px-6 py-2">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full" aria-hidden="true"></div>
+                System Online
+              </span>
+              <span>Last Updated: {new Date().toLocaleTimeString()}</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span>API Status: Connected</span>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                Help
+              </Button>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+};

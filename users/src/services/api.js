@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://civic-connect-backend-aq2a.onrender.com/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 class ApiService {
   constructor() {
@@ -132,7 +132,7 @@ class ApiService {
 
   async uploadReportImages(id, images) {
     const formData = new FormData();
-    images.forEach((image, index) => {
+    images.forEach((image) => {
       formData.append('images', image);
     });
 

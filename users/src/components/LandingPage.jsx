@@ -34,6 +34,7 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
       try {
         setLoadingCitizens(true);
         const response = await apiService.getActiveCitizens();
+        console.log('Active citizens response:', response);
         setActiveCitizens(response.data?.totalCitizens || 0);
       } catch (error) {
         console.error('Failed to load active citizens:', error);
@@ -81,7 +82,7 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
         month: 'short',
         day: 'numeric'
       });
-    } catch (error) {
+    } catch {
       return 'Date not available';
     }
   };

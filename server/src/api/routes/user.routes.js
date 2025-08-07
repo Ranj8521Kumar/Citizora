@@ -19,21 +19,31 @@ router.get('/active-citizens', async (req, res, next) => {
     // Get count of all users (active citizens)
     const totalUsers = await User.countDocuments();
     
-    // Get basic info of recent users (last 10 registered users)
+    // Get basic info of recent users (last 20 registered users)
     const recentUsers = await User.find()
-      .select('firstName lastName createdAt')
+      .select('firstName lastName email createdAt profileImage')
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(20);
+
+    // Get all users for the community display
+    const allUsers = await User.find()
+      .select('firstName lastName email createdAt profileImage')
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
       data: {
         totalCitizens: totalUsers,
-        recentCitizens: recentUsers
+        recentCitizens: recentUsers,
+        allCitizens: allUsers
       }
     });
   } catch (error) {
-    next(error);
+    console.error('Error fetching active citizens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching active citizens data'
+    });
   }
 });
 

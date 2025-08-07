@@ -38,9 +38,11 @@ export function ActiveCitizens() {
     }
   };
 
-  const filteredCitizens = citizensData?.recentCitizens?.filter(citizen => {
+  const filteredCitizens = citizensData?.allCitizens?.filter(citizen => {
     const fullName = `${citizen.firstName || ''} ${citizen.lastName || ''}`.toLowerCase();
-    return fullName.includes(searchTerm.toLowerCase());
+    const email = (citizen.email || '').toLowerCase();
+    const searchLower = searchTerm.toLowerCase();
+    return fullName.includes(searchLower) || email.includes(searchLower);
   }) || [];
 
   const formatDate = (dateString) => {
@@ -52,7 +54,7 @@ export function ActiveCitizens() {
         day: 'numeric'
       });
     } catch (error) {
-      return 'Date not available';
+      return `Date not available: ${error.message}`;
     }
   };
 
@@ -111,8 +113,8 @@ export function ActiveCitizens() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Recent Registrations</p>
-                  <p className="text-3xl font-bold text-green-600">{citizensData?.recentCitizens?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">All Citizens</p>
+                  <p className="text-3xl font-bold text-green-600">{citizensData?.allCitizens?.length || 0}</p>
                 </div>
                 <UserPlus className="w-8 h-8 text-green-600" />
               </div>
@@ -135,16 +137,16 @@ export function ActiveCitizens() {
         {/* Citizens List */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Community Members</CardTitle>
+            <CardTitle>All Community Members</CardTitle>
             <CardDescription>
-              Latest citizens who joined the CivicConnect community
+              All citizens who are part of the CivicConnect community
             </CardDescription>
             
             {/* Search */}
             <div className="relative pt-4">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search citizens by name..."
+                placeholder="Search citizens by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -167,13 +169,24 @@ export function ActiveCitizens() {
                   <div key={citizen._id || index} className="p-6 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-primary" />
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                          {citizen.profileImage ? (
+                            <img 
+                              src={citizen.profileImage} 
+                              alt={`${citizen.firstName} ${citizen.lastName}`}
+                              className="w-12 h-12 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Users className="w-6 h-6 text-primary" />
+                          )}
                         </div>
                         <div>
                           <h3 className="font-medium">
                             {citizen.firstName} {citizen.lastName}
                           </h3>
+                          {citizen.email && (
+                            <p className="text-sm text-muted-foreground">{citizen.email}</p>
+                          )}
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Calendar className="w-3 h-3" />
                             <span>Joined {formatDate(citizen.createdAt)}</span>
@@ -216,8 +229,8 @@ export function ActiveCitizens() {
                 <div>
                   <h4 className="font-medium mb-2">Recent Activity</h4>
                   <p className="text-sm text-muted-foreground">
-                    {citizensData?.recentCitizens?.length || 0} new members have joined recently, 
-                    showing strong community engagement.
+                    {citizensData?.allCitizens?.length || 0} total members are part of our community, 
+                    working together to improve our city.
                   </p>
                 </div>
               </div>

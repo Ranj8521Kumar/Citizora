@@ -59,6 +59,7 @@ const adminRoutes = require('./api/routes/admin.routes');
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users/active-citizens', userRoutes); // Public route for active citizens
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/reports', authMiddleware, reportRoutes);
 app.use('/api/maps', authMiddleware, mapRoutes);

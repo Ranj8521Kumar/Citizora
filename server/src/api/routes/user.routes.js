@@ -9,6 +9,34 @@ const User = require('../models/user.model');
 
 const router = express.Router();
 
+/**
+ * @route GET /api/users/active-citizens
+ * @desc Get active citizens count and basic info (public)
+ * @access Public
+ */
+router.get('/active-citizens', async (req, res, next) => {
+  try {
+    // Get count of all users (active citizens)
+    const totalUsers = await User.countDocuments();
+    
+    // Get basic info of recent users (last 10 registered users)
+    const recentUsers = await User.find()
+      .select('firstName lastName createdAt')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalCitizens: totalUsers,
+        recentCitizens: recentUsers
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // All routes require authentication
 router.use(authMiddleware);
 

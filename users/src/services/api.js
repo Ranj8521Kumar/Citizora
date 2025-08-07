@@ -166,7 +166,7 @@ class ApiService {
     });
   }
 
-  // Health check
+  // Health check method
   async healthCheck() {
     const url = `${this.baseURL.replace('/api', '')}/health`;
     const config = {
@@ -175,20 +175,24 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     };
-
     try {
       const response = await fetch(url, config);
-      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
-      
       return await response.json();
     } catch (error) {
       console.error('Health check failed:', error);
       throw error;
     }
+  }
+
+  // Get active citizens data
+  async getActiveCitizens() {
+    return await this.request('/users/active-citizens', {
+      method: 'GET',
+    });
   }
 }
 

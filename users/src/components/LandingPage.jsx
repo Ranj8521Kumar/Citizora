@@ -1,29 +1,50 @@
-import React from 'react';
-import { Button } from './ui/button.jsx';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card.jsx';
-import { Badge } from './ui/badge.jsx';
+import React, { useState, useEffect } from 'react';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
 import { 
   MessageSquare, 
   MapPin, 
-  Clock, 
-  TrendingUp,
+  TrendingUp, 
+  FileText, 
+  Construction, 
   CheckCircle,
-  AlertCircle,
-  Construction,
-  FileText
+  Users,
+  Clock
 } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback.jsx';
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import apiService from '../services/api';
 
 export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
   // Ensure reports is an array and provide default values
   const safeReports = Array.isArray(reports) ? reports : [];
+  const [activeCitizens, setActiveCitizens] = useState(0);
+  const [loadingCitizens, setLoadingCitizens] = useState(true);
   
   const stats = {
     totalReports: safeReports.length,
     resolvedReports: safeReports.filter(r => r.status === 'resolved').length,
     inProgressReports: safeReports.filter(r => r.status === 'in-progress').length,
-    activeUsers: 1247 // Mock data
+    activeUsers: activeCitizens
   };
+
+  // Load active citizens data
+  useEffect(() => {
+    const loadActiveCitizens = async () => {
+      try {
+        setLoadingCitizens(true);
+        const response = await apiService.getActiveCitizens();
+        setActiveCitizens(response.data?.totalCitizens || 0);
+      } catch (error) {
+        console.error('Failed to load active citizens:', error);
+        setActiveCitizens(0);
+      } finally {
+        setLoadingCitizens(false);
+      }
+    };
+
+    loadActiveCitizens();
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -137,7 +158,11 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
             </div>
             <div className="text-center">
               <div className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-                {stats.activeUsers}
+                {loadingCitizens ? (
+                  <div className="animate-pulse">...</div>
+                ) : (
+                  stats.activeUsers
+                )}
               </div>
               <div className="text-muted-foreground">Active Citizens</div>
             </div>

@@ -16,6 +16,7 @@ export function Header({ user, currentPage, onNavigate, onLogin, onLogout }) {
   const navigation = [
     { name: 'Home', page: 'landing', icon: Home },
     { name: 'Community', page: 'community', icon: Users },
+    { name: 'Active Citizens', page: 'citizens', icon: Users },
   ];
 
   const userNavigation = user ? [

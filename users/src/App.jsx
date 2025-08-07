@@ -3,6 +3,7 @@ import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { ReportForm } from './components/ReportForm';
 import { CommunityView } from './components/CommunityView';
+import { ActiveCitizens } from './components/ActiveCitizens';
 import { AuthModal } from './components/AuthModal';
 import { Header } from './components/Header';
 import apiService from './services/api';
@@ -159,6 +160,10 @@ export default function App() {
             user={user}
             onLogin={() => openAuth('login')}
           />
+        )}
+        
+        {currentPage === 'citizens' && (
+          <ActiveCitizens />
         )}
       </main>
 

@@ -83,7 +83,7 @@ export function Header({ user, currentPage, onNavigate, onLogin, onLogout }) {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-3">
-                <span className="text-sm">Welcome, {user.name}</span>
+                <span className="text-sm">Welcome, {user.firstName}</span>
                 <Button
                   variant="ghost"
                   size="sm"

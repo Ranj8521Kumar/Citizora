@@ -29,11 +29,14 @@ export function CommunityView({ reports, user, onLogin }) {
   const [selectedReport, setSelectedReport] = useState(null);
   const [votedReports, setVotedReports] = useState(new Set());
 
-  const filteredAndSortedReports = reports
+  // Ensure reports is an array and provide safety checks
+  const safeReports = Array.isArray(reports) ? reports : [];
+
+  const filteredAndSortedReports = safeReports
     .filter(report => {
-      const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           report.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           report.location.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (report.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (report.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (report.location?.address?.description || report.location?.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
       const matchesCategory = categoryFilter === 'all' || report.category === categoryFilter;
       return matchesSearch && matchesStatus && matchesCategory;
@@ -52,10 +55,10 @@ export function CommunityView({ reports, user, onLogin }) {
     });
 
   const stats = {
-    total: reports.length,
-    resolved: reports.filter(r => r.status === 'resolved').length,
-    inProgress: reports.filter(r => r.status === 'in-progress').length,
-    totalVotes: reports.reduce((sum, r) => sum + r.votes, 0),
+    total: safeReports.length,
+    resolved: safeReports.filter(r => r.status === 'resolved').length,
+    inProgress: safeReports.filter(r => r.status === 'in-progress').length,
+    totalVotes: safeReports.reduce((sum, r) => sum + (r.votes || 0), 0),
   };
 
   const categories = [
@@ -114,25 +117,40 @@ export function CommunityView({ reports, user, onLogin }) {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+    if (!dateString) return 'Date not available';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Date not available';
+    }
   };
 
   const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'Date not available';
+    try {
+      return new Date(dateString).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Date not available';
+    }
   };
 
   const handleVote = (reportId) => {
     if (!user) {
       onLogin();
+      return;
+    }
+    
+    if (!reportId) {
+      console.warn('Cannot vote: report ID is undefined');
       return;
     }
     
@@ -287,11 +305,12 @@ export function CommunityView({ reports, user, onLogin }) {
                   <div className="divide-y divide-border">
                     {filteredAndSortedReports.map((report) => {
                       const StatusIcon = getStatusIcon(report.status);
-                      const hasVoted = votedReports.has(report.id);
+                      const reportId = report._id || report.id;
+                      const hasVoted = votedReports.has(reportId);
                       
                       return (
                         <div 
-                          key={report.id} 
+                          key={report._id || report.id || Math.random()} 
                           className={`p-6 hover:bg-muted/50 cursor-pointer transition-colors border-l-4 ${getPriorityColor(report.priority)}`}
                           onClick={() => setSelectedReport(report)}
                         >
@@ -303,14 +322,14 @@ export function CommunityView({ reports, user, onLogin }) {
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleVote(report.id);
+                                  handleVote(report._id || report.id);
                                 }}
                                 className={`p-2 ${hasVoted ? 'bg-primary' : ''}`}
                               >
                                 <ChevronUp className="w-4 h-4" />
                               </Button>
                               <span className="text-sm font-medium mt-1">
-                                {report.votes + (hasVoted ? 1 : 0)}
+                                {(report.votes || 0) + (hasVoted ? 1 : 0)}
                               </span>
                             </div>
                             
@@ -319,22 +338,22 @@ export function CommunityView({ reports, user, onLogin }) {
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge className={getStatusColor(report.status)}>
                                   <StatusIcon className="w-3 h-3 mr-1" />
-                                  {report.status.replace('-', ' ')}
+                                  {(report.status || 'submitted').replace('-', ' ')}
                                 </Badge>
                                 <Badge variant="outline">
                                   {getCategoryName(report.category)}
                                 </Badge>
                               </div>
                               
-                              <h3 className="font-medium mb-1">{report.title}</h3>
+                              <h3 className="font-medium mb-1">{report.title || 'Untitled Report'}</h3>
                               <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                                {report.description}
+                                {report.description || 'No description provided'}
                               </p>
                               
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
-                                  {report.location}
+                                  {report.location?.address?.description || report.location?.description || 'Location not specified'}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
@@ -376,13 +395,13 @@ export function CommunityView({ reports, user, onLogin }) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h3 className="font-medium mb-2">{selectedReport.title}</h3>
-                    <p className="text-sm text-muted-foreground">{selectedReport.description}</p>
+                    <h3 className="font-medium mb-2">{selectedReport.title || 'Untitled Report'}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedReport.description || 'No description provided'}</p>
                   </div>
                   
                   <div className="flex gap-2">
                     <Badge className={getStatusColor(selectedReport.status)}>
-                      {selectedReport.status.replace('-', ' ')}
+                      {(selectedReport.status || 'submitted').replace('-', ' ')}
                     </Badge>
                     <Badge variant="outline">
                       {getCategoryName(selectedReport.category)}
@@ -392,7 +411,7 @@ export function CommunityView({ reports, user, onLogin }) {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedReport.location}</span>
+                      <span>{selectedReport.location?.address?.description || selectedReport.location?.description || 'Location not specified'}</span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">
@@ -402,7 +421,7 @@ export function CommunityView({ reports, user, onLogin }) {
                     
                     <div className="flex items-center gap-2 text-sm">
                       <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedReport.votes} community votes</span>
+                      <span>{(selectedReport.votes || 0)} community votes</span>
                     </div>
                     
                     {selectedReport.estimatedResolution && (
@@ -413,7 +432,7 @@ export function CommunityView({ reports, user, onLogin }) {
                     )}
                   </div>
                   
-                  {selectedReport.images.length > 0 && (
+                  {(selectedReport.images && selectedReport.images.length > 0) && (
                     <div>
                       <h4 className="font-medium mb-2">Photos</h4>
                       <div className="grid grid-cols-2 gap-2">
@@ -434,13 +453,13 @@ export function CommunityView({ reports, user, onLogin }) {
                       className="w-full" 
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleVote(selectedReport.id);
+                        handleVote(selectedReport._id || selectedReport.id);
                       }}
-                      variant={votedReports.has(selectedReport.id) ? "default" : "outline"}
+                      variant={votedReports.has(selectedReport._id || selectedReport.id) ? "default" : "outline"}
                     >
                       <ChevronUp className="w-4 h-4 mr-2" />
-                      {votedReports.has(selectedReport.id) ? 'Voted' : 'Vote'} 
-                      ({selectedReport.votes + (votedReports.has(selectedReport.id) ? 1 : 0)})
+                      {votedReports.has(selectedReport._id || selectedReport.id) ? 'Voted' : 'Vote'} 
+                      ({(selectedReport.votes || 0) + (votedReports.has(selectedReport._id || selectedReport.id) ? 1 : 0)})
                     </Button>
                   </div>
                   

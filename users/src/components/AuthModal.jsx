@@ -5,10 +5,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Eye, EyeOff } from 'lucide-react';
+import apiService from '../services/api';
 
 export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -28,13 +30,16 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
 
     if (!formData.password.trim()) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     if (mode === 'register') {
-      if (!formData.name.trim()) {
-        newErrors.name = 'Name is required';
+      if (!formData.firstName.trim()) {
+        newErrors.firstName = 'First name is required';
+      }
+      if (!formData.lastName.trim()) {
+        newErrors.lastName = 'Last name is required';
       }
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
@@ -53,16 +58,15 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       if (mode === 'login') {
-        onLogin(formData.email, formData.password);
+        const response = await apiService.login(formData.email, formData.password);
+        onLogin(response.user, response.token);
       } else {
-        onRegister(formData.name, formData.email, formData.password);
+        const response = await apiService.register(formData.firstName, formData.lastName, formData.email, formData.password);
+        onRegister(response.user, response.token);
       }
     } catch (error) {
-      setErrors({ general: 'An error occurred. Please try again.' });
+      setErrors({ general: error.message || 'An error occurred. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -86,20 +90,37 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'register' && (
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter your full name"
-                className={errors.name ? 'border-destructive' : ''}
-              />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name}</p>
-              )}
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  placeholder="Enter your first name"
+                  className={errors.firstName ? 'border-destructive' : ''}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive">{errors.firstName}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  placeholder="Enter your last name"
+                  className={errors.lastName ? 'border-destructive' : ''}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-destructive">{errors.lastName}</p>
+                )}
+              </div>
+            </>
           )}
 
           <div className="space-y-2">

@@ -15,10 +15,13 @@ import {
 import { ImageWithFallback } from './figma/ImageWithFallback.jsx';
 
 export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
+  // Ensure reports is an array and provide default values
+  const safeReports = Array.isArray(reports) ? reports : [];
+  
   const stats = {
-    totalReports: reports.length,
-    resolvedReports: reports.filter(r => r.status === 'resolved').length,
-    inProgressReports: reports.filter(r => r.status === 'in-progress').length,
+    totalReports: safeReports.length,
+    resolvedReports: safeReports.filter(r => r.status === 'resolved').length,
+    inProgressReports: safeReports.filter(r => r.status === 'in-progress').length,
     activeUsers: 1247 // Mock data
   };
 
@@ -51,10 +54,15 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
+    if (!dateString) return 'Date not available';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Date not available';
+    }
   };
 
   return (
@@ -203,27 +211,27 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {reports.slice(0, 6).map((report) => (
-              <Card key={report.id} className="hover:shadow-md transition-shadow">
+            {safeReports.slice(0, 6).map((report) => (
+              <Card key={report._id || report.id || Math.random()} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-2">
                     <Badge className={getStatusColor(report.status)}>
-                      {report.status.replace('-', ' ')}
+                      {(report.status || 'submitted').replace('-', ' ')}
                     </Badge>
                     <Badge variant="outline" className={getPriorityColor(report.priority)}>
-                      {report.priority}
+                      {report.priority || 'medium'}
                     </Badge>
                   </div>
-                  <CardTitle className="text-lg">{report.title}</CardTitle>
+                  <CardTitle className="text-lg">{report.title || 'Untitled Report'}</CardTitle>
                   <CardDescription className="line-clamp-2">
-                    {report.description}
+                    {report.description || 'No description provided'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center text-sm text-muted-foreground">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {report.location}
+                      {report.location?.address?.description || report.location?.description || 'Location not specified'}
                     </div>
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <div className="flex items-center">
@@ -232,7 +240,7 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
                       </div>
                       <div className="flex items-center">
                         <TrendingUp className="w-4 h-4 mr-1" />
-                        {report.votes} votes
+                        {(report.votes || 0)} votes
                       </div>
                     </div>
                   </div>

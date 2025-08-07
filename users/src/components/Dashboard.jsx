@@ -26,8 +26,8 @@ export function Dashboard({ user, reports, onNavigate }) {
   const [selectedReport, setSelectedReport] = useState(null);
 
   const filteredReports = reports.filter(report => {
-    const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (report.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (report.description || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -85,21 +85,31 @@ export function Dashboard({ user, reports, onNavigate }) {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    if (!dateString) return 'Date not available';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch (error) {
+      return 'Date not available';
+    }
   };
 
   const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'Date not available';
+    try {
+      return new Date(dateString).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Date not available';
+    }
   };
 
   return (
@@ -110,7 +120,7 @@ export function Dashboard({ user, reports, onNavigate }) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, {user.name}</p>
+              <p className="text-muted-foreground">Welcome back, {user.firstName || user.name || 'User'}</p>
             </div>
             <Button onClick={() => onNavigate('report')} className="flex items-center space-x-2">
               <Plus className="w-4 h-4" />
@@ -228,7 +238,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                       const StatusIcon = getStatusIcon(report.status);
                       return (
                         <div 
-                          key={report.id} 
+                          key={report._id || report.id || Math.random()} 
                           className="p-6 hover:bg-muted/50 cursor-pointer transition-colors"
                           onClick={() => setSelectedReport(report)}
                         >
@@ -237,22 +247,22 @@ export function Dashboard({ user, reports, onNavigate }) {
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge className={getStatusColor(report.status)}>
                                   <StatusIcon className="w-3 h-3 mr-1" />
-                                  {report.status.replace('-', ' ')}
+                                  {(report.status || 'submitted').replace('-', ' ')}
                                 </Badge>
                                 <Badge variant="outline" className={getPriorityColor(report.priority)}>
-                                  {report.priority}
+                                  {report.priority || 'medium'}
                                 </Badge>
                               </div>
                               
-                              <h3 className="font-medium mb-1">{report.title}</h3>
+                              <h3 className="font-medium mb-1">{report.title || 'Untitled Report'}</h3>
                               <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                                {report.description}
+                                {report.description || 'No description provided'}
                               </p>
                               
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
-                                  {report.location}
+                                  {report.location?.address?.description || report.location?.description || 'Location not specified'}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
@@ -260,7 +270,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <TrendingUp className="w-3 h-3" />
-                                  {report.votes} votes
+                                  {(report.votes || 0)} votes
                                 </div>
                               </div>
                             </div>
@@ -292,23 +302,23 @@ export function Dashboard({ user, reports, onNavigate }) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h3 className="font-medium mb-2">{selectedReport.title}</h3>
-                    <p className="text-sm text-muted-foreground">{selectedReport.description}</p>
+                    <h3 className="font-medium mb-2">{selectedReport.title || 'Untitled Report'}</h3>
+                    <p className="text-sm text-muted-foreground">{selectedReport.description || 'No description provided'}</p>
                   </div>
                   
                   <div className="flex gap-2">
                     <Badge className={getStatusColor(selectedReport.status)}>
-                      {selectedReport.status.replace('-', ' ')}
+                      {(selectedReport.status || 'submitted').replace('-', ' ')}
                     </Badge>
                     <Badge variant="outline" className={getPriorityColor(selectedReport.priority)}>
-                      {selectedReport.priority}
+                      {selectedReport.priority || 'medium'}
                     </Badge>
                   </div>
                   
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedReport.location}</span>
+                      <span>{selectedReport.location?.address?.description || selectedReport.location?.description || 'Location not specified'}</span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">
@@ -318,7 +328,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                     
                     <div className="flex items-center gap-2 text-sm">
                       <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedReport.votes} community votes</span>
+                      <span>{(selectedReport.votes || 0)} community votes</span>
                     </div>
                     
                     {selectedReport.estimatedResolution && (
@@ -329,7 +339,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                     )}
                   </div>
                   
-                  {selectedReport.images.length > 0 && (
+                  {(selectedReport.images && selectedReport.images.length > 0) && (
                     <div>
                       <h4 className="font-medium mb-2">Photos</h4>
                       <div className="grid grid-cols-2 gap-2">
@@ -354,7 +364,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                           Submitted on {formatDate(selectedReport.createdAt)}
                         </span>
                       </div>
-                      {selectedReport.status !== 'submitted' && (
+                      {selectedReport.status !== 'submitted' && selectedReport.updatedAt && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-accent rounded-full"></div>
                           <span className="text-muted-foreground">

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import apiService from '../services/api';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -24,12 +25,12 @@ import {
 } from 'lucide-react';
 
 const categories = [
-  { id: 'roads', name: 'Roads & Transport', icon: Car, description: 'Potholes, traffic lights, signage' },
-  { id: 'water', name: 'Water Issues', icon: Droplets, description: 'Leaks, water quality, drainage' },
-  { id: 'waste', name: 'Waste Management', icon: Trash, description: 'Collection, illegal dumping, bins' },
-  { id: 'electricity', name: 'Electricity', icon: Zap, description: 'Street lights, power outages' },
-  { id: 'safety', name: 'Public Safety', icon: Shield, description: 'Security concerns, vandalism' },
-  { id: 'infrastructure', name: 'Infrastructure', icon: Construction, description: 'Buildings, parks, facilities' },
+  { id: 'road_issue', name: 'Roads & Transport', icon: Car, description: 'Potholes, traffic lights, signage' },
+  { id: 'water_issue', name: 'Water Issues', icon: Droplets, description: 'Leaks, water quality, drainage' },
+  { id: 'waste_management', name: 'Waste Management', icon: Trash, description: 'Collection, illegal dumping, bins' },
+  { id: 'electricity_issue', name: 'Electricity', icon: Zap, description: 'Street lights, power outages' },
+  { id: 'public_safety', name: 'Public Safety', icon: Shield, description: 'Security concerns, vandalism' },
+  { id: 'other', name: 'Infrastructure', icon: Construction, description: 'Buildings, parks, facilities' },
 ];
 
 export function ReportForm({ onSubmit, onCancel }) {
@@ -44,6 +45,7 @@ export function ReportForm({ onSubmit, onCancel }) {
     priority: 'medium',
     estimatedResolution: ''
   });
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const steps = ['category', 'details', 'location', 'images', 'review'];
   const currentStepIndex = steps.indexOf(currentStep);
@@ -82,22 +84,53 @@ export function ReportForm({ onSubmit, onCancel }) {
 
   const handleSubmit = () => {
     if (canProceed()) {
-      onSubmit(formData);
+      // Structure the data according to backend requirements
+      const reportData = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        priority: formData.priority,
+        location: {
+          type: 'Point',
+          coordinates: formData.coordinates 
+            ? [formData.coordinates.lng, formData.coordinates.lat] // Convert to [longitude, latitude] array
+            : [0, 0], // Default coordinates if none provided
+          address: {
+            description: formData.location || 'Location not specified'
+          }
+        },
+        images: formData.images
+      };
+      
+      console.log('Submitting report data:', JSON.stringify(reportData, null, 2));
+      onSubmit(reportData);
     }
   };
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const files = event.target.files;
     if (files) {
-      // In a real app, you would upload these files and get URLs
-      // For now, we'll create mock URLs
-      const newImages = Array.from(files).map((file, index) => 
-        `https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop&q=80&sig=${Date.now()}_${index}`
-      );
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...newImages].slice(0, 5) // Max 5 images
-      }));
+      setUploadingImages(true);
+      try {
+        // Convert files to base64 for now (in production, you'd upload to a service)
+        const imagePromises = Array.from(files).map(file => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+          });
+        });
+        
+        const imageDataUrls = await Promise.all(imagePromises);
+        setFormData(prev => ({
+          ...prev,
+          images: [...prev.images, ...imageDataUrls].slice(0, 5) // Max 5 images
+        }));
+      } catch (error) {
+        console.error('Error processing images:', error);
+      } finally {
+        setUploadingImages(false);
+      }
     }
   };
 
@@ -115,7 +148,7 @@ export function ReportForm({ onSubmit, onCancel }) {
           const { latitude, longitude } = position.coords;
           setFormData(prev => ({
             ...prev,
-            coordinates: { lat: latitude, lng: longitude },
+            coordinates: { lat: latitude, lng: longitude }, // Store as {lat, lng} for easy conversion
             location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
           }));
         },
@@ -340,7 +373,9 @@ export function ReportForm({ onSubmit, onCancel }) {
                       >
                         <div className="text-center">
                           <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                          <p className="text-sm font-medium">Click to upload photos</p>
+                          <p className="text-sm font-medium">
+                            {uploadingImages ? 'Processing images...' : 'Click to upload photos'}
+                          </p>
                           <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB each</p>
                         </div>
                       </label>

@@ -1,12 +1,69 @@
-# React + Vite
+# CivicConnect Users Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React-based frontend for the CivicConnect platform, allowing citizens to report community issues and track their resolution.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **User Authentication**: Secure login and registration system
+- **Report Submission**: Multi-step form for submitting community issues with image uploads
+- **Dashboard**: Personal dashboard to track submitted reports
+- **Community View**: Browse all community reports
+- **Real-time Updates**: Status updates and notifications
 
-## Expanding the ESLint configuration
+## Backend Connection
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+This frontend connects to the CivicConnect backend API deployed at:
+```
+https://civic-connect-backend-aq2a.onrender.com/api
+```
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## API Integration
+
+The frontend uses a centralized API service (`src/services/api.js`) that handles:
+- Authentication (login/register)
+- Report management (create, read, update)
+- Image uploads
+- User profile management
+
+## Deployment
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+
+## Technology Stack
+
+- **React 19** - UI framework
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling
+- **Radix UI** - Accessible components
+- **Lucide React** - Icons
+
+## Project Structure
+
+```
+src/
+├── components/          # React components
+│   ├── ui/            # Reusable UI components
+│   ├── AuthModal.jsx  # Authentication modal
+│   ├── Dashboard.jsx  # User dashboard
+│   ├── ReportForm.jsx # Report submission form
+│   └── ...
+├── services/
+│   └── api.js         # API service layer
+└── App.jsx            # Main application component
+```

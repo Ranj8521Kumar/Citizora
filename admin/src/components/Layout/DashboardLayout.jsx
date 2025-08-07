@@ -14,7 +14,8 @@ import {
   FileText,
   UserCheck,
   Shield,
-  Home
+  Home,
+  X
 } from 'lucide-react';
 
 const navigationItems = [
@@ -28,6 +29,7 @@ const navigationItems = [
 
 export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const currentPageTitle = useMemo(() => {
     const currentItem = navigationItems.find(item => item.id === activeTab);
@@ -38,20 +40,53 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
     setSidebarCollapsed(prev => !prev);
   };
 
+  const toggleMobileSidebar = () => {
+    setMobileSidebarOpen(prev => !prev);
+  };
+
+  const closeMobileSidebar = () => {
+    setMobileSidebarOpen(false);
+  };
+
   return (
     <div className="h-screen flex bg-slate-50">
+      {/* Mobile Overlay */}
+      {mobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={closeMobileSidebar}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={cn(
-        "bg-[#1E3A8A] text-white transition-all duration-300 flex flex-col shadow-lg",
-        sidebarCollapsed ? "w-16" : "w-64"
+        "bg-[#1E3A8A] text-white transition-all duration-300 flex flex-col shadow-lg z-50",
+        // Desktop: collapsible sidebar
+        "hidden lg:flex",
+        sidebarCollapsed ? "lg:w-16" : "lg:w-64",
+        // Mobile: full width overlay sidebar
+        mobileSidebarOpen ? "fixed inset-y-0 left-0 w-64 flex" : "hidden"
       )}>
+        {/* Mobile Close Button */}
+        <div className="lg:hidden p-4 border-b border-blue-800">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={closeMobileSidebar}
+            className="w-full justify-center text-blue-200 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+
         {/* Logo/Brand */}
         <div className="p-6 border-b border-blue-800">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
               <Shield className="w-6 h-6 text-white" />
             </div>
-            {!sidebarCollapsed && (
+            {(!sidebarCollapsed || mobileSidebarOpen) && (
               <div>
                 <h2 className="text-white">CivicConnect</h2>
                 <p className="text-blue-200 text-xs">Admin Portal</p>
@@ -74,14 +109,20 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
                     className={cn(
                       "w-full justify-start gap-3 h-12 text-blue-100 hover:bg-white/10 hover:text-white transition-colors",
                       isActive && "bg-white/15 text-white",
-                      sidebarCollapsed && "justify-center"
+                      sidebarCollapsed && !mobileSidebarOpen && "justify-center"
                     )}
-                    onClick={() => onTabChange(item.id)}
-                    aria-label={sidebarCollapsed ? item.label : undefined}
-                    title={sidebarCollapsed ? item.label : undefined}
+                    onClick={() => {
+                      onTabChange(item.id);
+                      // Close mobile sidebar when item is clicked
+                      if (mobileSidebarOpen) {
+                        closeMobileSidebar();
+                      }
+                    }}
+                    aria-label={sidebarCollapsed && !mobileSidebarOpen ? item.label : undefined}
+                    title={sidebarCollapsed && !mobileSidebarOpen ? item.label : undefined}
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />
-                    {!sidebarCollapsed && <span>{item.label}</span>}
+                    {(!sidebarCollapsed || mobileSidebarOpen) && <span>{item.label}</span>}
                   </Button>
                 </li>
               );
@@ -89,8 +130,8 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
           </ul>
         </nav>
 
-        {/* Collapse Button */}
-        <div className="p-4 border-t border-blue-800">
+        {/* Desktop Collapse Button */}
+        <div className="hidden lg:block p-4 border-t border-blue-800">
           <Button
             variant="ghost"
             size="sm"
@@ -113,7 +154,13 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
         <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 min-w-0">
-              <Button variant="ghost" size="sm" className="md:hidden">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="lg:hidden"
+                onClick={toggleMobileSidebar}
+                aria-label="Toggle sidebar"
+              >
                 <Menu className="w-5 h-5" />
               </Button>
               <div className="min-w-0">

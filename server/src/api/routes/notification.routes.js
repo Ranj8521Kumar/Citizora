@@ -6,6 +6,7 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware/auth.middleware');
 const Notification = require('../models/notification.model');
+const User = require('../models/user.model');
 
 const router = express.Router();
 
@@ -36,6 +37,62 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch notifications',
+      error: {
+        message: error.message
+      }
+    });
+  }
+});
+
+/**
+ * @route POST /api/notifications
+ * @desc Create a new notification/message to a user
+ * @access Private
+ */
+router.post('/', async (req, res) => {
+  try {
+    const { recipientId, subject, message, notificationType = 'message' } = req.body;
+
+    if (!recipientId || !subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recipient ID, subject, and message are required fields'
+      });
+    }
+
+    // Verify recipient exists
+    const recipient = await User.findById(recipientId);
+    if (!recipient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Recipient user not found'
+      });
+    }
+
+    // Create notification
+    const notification = await Notification.createNotification({
+      recipient: recipientId,
+      type: notificationType,
+      title: subject,
+      message: message,
+      relatedTo: {
+        model: 'User',
+        id: req.user._id // Sender's ID
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Notification sent successfully',
+      data: {
+        notification
+      }
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send notification',
       error: {
         message: error.message
       }

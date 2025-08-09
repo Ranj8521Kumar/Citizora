@@ -116,4 +116,82 @@ router.post('/reports/bulk-delete', authMiddleware, restrictTo('admin'), adminCo
  */
 router.get('/reports/search', authMiddleware, restrictTo('admin'), adminController.advancedReportSearch);
 
+/**
+ * @route POST /api/admin/notifications
+ * @desc Send a notification/message to a user
+ * @access Private (admin only)
+ */
+router.post('/notifications', authMiddleware, restrictTo('admin'), adminController.sendNotification);
+
+/**
+ * @route POST /api/admin/email
+ * @desc Send an email to a user
+ * @access Private (admin only)
+ */
+router.post('/email', authMiddleware, restrictTo('admin'), async (req, res) => {
+  try {
+    const { userId, subject, body } = req.body;
+
+    if (!userId || !subject || !body) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID, subject, and body are required fields'
+      });
+    }
+
+    const User = require('../models/user.model');
+    
+    // Verify recipient exists
+    const recipient = await User.findById(userId);
+    if (!recipient) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user has an email
+    if (!recipient.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'User does not have an email address'
+      });
+    }
+
+    // Simulate sending email (in production, you would use a real email service)
+    console.log(`Email sent to ${recipient.email} with subject: ${subject}`);
+    console.log(`Email body: ${body}`);
+
+    // Create a notification as well
+    const Notification = require('../models/notification.model');
+    const notification = await Notification.createNotification({
+      recipient: userId,
+      type: 'message',
+      title: `Email: ${subject}`,
+      message: body,
+      relatedTo: {
+        model: 'User',
+        id: req.user._id // Admin's ID
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Email sent successfully',
+      data: {
+        notification
+      }
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send email',
+      error: {
+        message: error.message
+      }
+    });
+  }
+});
+
 module.exports = router;

@@ -9,6 +9,7 @@ const Report = require('../models/report.model');
 const Notification = require('../models/notification.model');
 const { ApiError } = require('../middleware/error.middleware');
 const mongoose = require('mongoose');
+const sendEmail = require('../utils/email.util');
 
 /**
  * Create an admin user (only accessible from trusted sources)
@@ -1273,26 +1274,46 @@ exports.sendNotification = async (req, res) => {
 
     await notification.save();
 
-    // If sendEmail is true and user has an email, send an email as well
     let emailSent = false;
+    let emailError = null;
+    
     if (sendEmail && recipient.email) {
-      // In a production environment, you would use a real email service like Nodemailer
-      // For now, we'll just log it
-      console.log(`[EMAIL SERVICE] Email would be sent to: ${recipient.email}`);
-      console.log(`[EMAIL SERVICE] Subject: ${subject}`);
-      console.log(`[EMAIL SERVICE] Message: ${message}`);
-      
-      emailSent = true;
+      try {
+        console.log(`Attempting to send email to ${recipient.email}`);
+        
+        // Use the email utility to send an actual email
+        const emailResult = await sendEmail({
+          email: recipient.email,
+          subject: subject,
+          message: message,
+          html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+                  <h2 style="color: #3366cc;">${subject}</h2>
+                  <p style="white-space: pre-line;">${message}</p>
+                  <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                  <p style="color: #666; font-size: 12px;">This message was sent by CivicConnect Administration.</p>
+                </div>`
+        });
+        
+        emailSent = true;
+        console.log(`Email sent successfully to ${recipient.email}:`, emailResult);
+      } catch (error) {
+        console.error('Failed to send email:', error);
+        emailError = error.message;
+        // We still continue even if email fails, as the notification was created
+      }
     }
 
     res.status(201).json({
       success: true,
       message: emailSent 
         ? 'Notification sent successfully and email delivered' 
-        : 'Notification sent successfully (no email sent)',
+        : emailError
+          ? `Notification sent successfully but email failed: ${emailError}`
+          : 'Notification sent successfully (no email requested)',
       data: {
         notification,
-        emailSent
+        emailSent,
+        emailError
       }
     });
   } catch (error) {

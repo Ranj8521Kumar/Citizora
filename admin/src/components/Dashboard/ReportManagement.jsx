@@ -74,7 +74,7 @@ export const ReportManagement = () => {
     const fetchReports = async () => {
       try {
         setLoading(true);
-        const response = await apiService.searchReports({
+        const response = await apiService.advancedReportSearch({
           status: statusFilter !== 'all' ? statusFilter : undefined,
           priority: priorityFilter !== 'all' ? priorityFilter : undefined,
           sort: sortField,
@@ -82,7 +82,48 @@ export const ReportManagement = () => {
           query: searchTerm || undefined
         });
         
-        setReports(response.reports || []);
+        // Debug log to check the response structure
+        console.log('API Response:', response);
+        
+        // Check for reports in the correct response structure
+        let reportData;
+        if (response.data?.reports) {
+          // Server returns data in response.data.reports
+          reportData = response.data.reports;
+        } else if (response.reports) {
+          // Direct reports array
+          reportData = response.reports;
+        } else if (Array.isArray(response)) {
+          // Direct array response
+          reportData = response;
+        } else {
+          reportData = [];
+        }
+        
+        console.log('Report Data:', reportData);
+        console.log('Reports Count:', reportData.length);
+        
+        // Add a fake report if we got no reports to test rendering
+        if (reportData.length === 0) {
+          reportData.push({
+            _id: 'test-id-1',
+            title: 'Test Report - Debugging',
+            description: 'This is a test report to debug rendering',
+            status: 'pending',
+            priority: 'high',
+            createdAt: new Date().toISOString(),
+            location: {
+              address: {
+                street: '123 Test St',
+                city: 'Test City',
+                state: 'Test State',
+                zipCode: '12345'
+              }
+            }
+          });
+        }
+        
+        setReports(reportData);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching reports:', err);
@@ -113,7 +154,7 @@ export const ReportManagement = () => {
     if (selectedReports.length === filteredReports.length) {
       setSelectedReports([]);
     } else {
-      setSelectedReports(filteredReports.map(report => report.id));
+      setSelectedReports(filteredReports.map(report => report._id));
     }
   };
 
@@ -136,7 +177,7 @@ export const ReportManagement = () => {
       // Update local state
       setReports(prevReports => 
         prevReports.map(report => 
-          selectedReports.includes(report.id) 
+          selectedReports.includes(report._id) 
             ? {...report, status: newStatus} 
             : report
         )
@@ -160,17 +201,15 @@ export const ReportManagement = () => {
       await apiService.bulkAssignReports(selectedReports, workerId);
       
       // Update local state
-      const worker = fieldWorkers.find(w => w.id === workerId);
-      const workerName = worker ? `${worker.firstName} ${worker.lastName}` : 'Unknown';
+      const worker = fieldWorkers.find(w => w._id === workerId);
       
       setReports(prevReports => 
         prevReports.map(report => 
-          selectedReports.includes(report.id) 
+          selectedReports.includes(report._id) 
             ? {
                 ...report, 
-                assignedTo: workerId,
-                assignedToName: workerName,
-                status: report.status === 'Pending' ? 'Assigned' : report.status
+                assignedTo: { _id: workerId, firstName: worker?.firstName, lastName: worker?.lastName },
+                status: report.status === 'pending' ? 'assigned' : report.status
               } 
             : report
         )
@@ -195,7 +234,7 @@ export const ReportManagement = () => {
       
       // Update local state
       setReports(prevReports => 
-        prevReports.filter(report => !selectedReports.includes(report.id))
+        prevReports.filter(report => !selectedReports.includes(report._id))
       );
       
       setSelectedReports([]);
@@ -223,7 +262,7 @@ export const ReportManagement = () => {
     setError(null);
     setSelectedReports([]);
     
-    apiService.searchReports({
+    apiService.advancedReportSearch({
       status: statusFilter !== 'all' ? statusFilter : undefined,
       priority: priorityFilter !== 'all' ? priorityFilter : undefined,
       sort: sortField,
@@ -231,7 +270,9 @@ export const ReportManagement = () => {
       query: searchTerm || undefined
     })
       .then(response => {
-        setReports(response.reports || []);
+        // Check for reports in the correct response structure
+        const reportData = response.data?.reports || response.reports || [];
+        setReports(reportData);
         setLoading(false);
       })
       .catch(err => {
@@ -243,21 +284,50 @@ export const ReportManagement = () => {
   
   // Filter reports based on search and filters
   const filteredReports = useMemo(() => {
+    if (!reports || reports.length === 0) {
+      return [];
+    }
+    
+    console.log('Filtering reports:', reports);
+    
     return reports.filter(report => {
+      // Handle potentially missing properties or different structures
+      const title = report?.title || '';
+      const description = report?.description || '';
+      
+      // For location, need to handle the nested structure from the Report model
+      let locationText = '';
+      if (report?.location?.address) {
+        const address = report.location.address;
+        locationText = [address.street, address.city, address.state, address.zipCode]
+          .filter(Boolean)
+          .join(' ');
+      }
+      
+      // Convert status and priority to lowercase if they exist
+      const reportStatus = (report?.status || '').toLowerCase();
+      const reportPriority = (report?.priority || '').toLowerCase();
+      
+      const searchTermLower = searchTerm.toLowerCase();
+      
       const matchesSearch = searchTerm === '' || 
-        report.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.location?.toLowerCase().includes(searchTerm.toLowerCase());
+        title.toLowerCase().includes(searchTermLower) ||
+        description.toLowerCase().includes(searchTermLower) ||
+        locationText.toLowerCase().includes(searchTermLower);
       
       const matchesStatus = statusFilter === 'all' || 
-        report.status?.toLowerCase() === statusFilter.toLowerCase();
+        reportStatus === statusFilter.toLowerCase();
       
       const matchesPriority = priorityFilter === 'all' || 
-        report.priority?.toLowerCase() === priorityFilter.toLowerCase();
+        reportPriority === priorityFilter.toLowerCase();
       
       return matchesSearch && matchesStatus && matchesPriority;
     });
   }, [reports, searchTerm, statusFilter, priorityFilter]);
+
+  // Debug logs
+  console.log('Filtered Reports:', filteredReports);
+  console.log('Selected Reports:', selectedReports);
 
   if (loading) {
     return (
@@ -400,7 +470,7 @@ export const ReportManagement = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {fieldWorkers.map(worker => (
-                          <SelectItem key={worker.id} value={worker.id}>
+                          <SelectItem key={worker._id} value={worker._id}>
                             {worker.firstName} {worker.lastName}
                           </SelectItem>
                         ))}
@@ -466,11 +536,11 @@ export const ReportManagement = () => {
                       </TableRow>
                     ) : (
                       filteredReports.map((report) => (
-                        <TableRow key={report.id}>
+                        <TableRow key={report._id}>
                           <TableCell>
                             <Checkbox
-                              checked={selectedReports.includes(report.id)}
-                              onCheckedChange={() => handleSelectReport(report.id)}
+                              checked={selectedReports.includes(report._id)}
+                              onCheckedChange={() => handleSelectReport(report._id)}
                               aria-label={`Select report ${report.title}`}
                               disabled={actionInProgress}
                             />
@@ -483,7 +553,7 @@ export const ReportManagement = () => {
                           </TableCell>
                           <TableCell>
                             <Badge variant={getStatusVariant(report.status)}>
-                              {report.status}
+                              {report.status?.replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -497,14 +567,23 @@ export const ReportManagement = () => {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <MapPin className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm text-gray-600 truncate max-w-[120px]">{report.location}</span>
+                              <span className="text-sm text-gray-600 truncate max-w-[120px]">
+                                {report.location?.address ? 
+                                  [report.location.address.street, report.location.address.city]
+                                    .filter(Boolean)
+                                    .join(', ') 
+                                  : 'No location data'
+                                }
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            {report.assignedToName ? (
+                            {report.assignedTo ? (
                               <div className="flex items-center gap-2">
                                 <UserCheck className="w-4 h-4 text-green-500" />
-                                <span className="text-sm">{report.assignedToName}</span>
+                                <span className="text-sm">
+                                  {report.assignedTo.firstName || ''} {report.assignedTo.lastName || ''}
+                                </span>
                               </div>
                             ) : (
                               <span className="text-sm text-gray-500">Unassigned</span>

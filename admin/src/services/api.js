@@ -327,8 +327,17 @@ class ApiService {
 
   async advancedReportSearch(filters = {}) {
     const queryParams = new URLSearchParams(filters).toString();
-    const endpoint = queryParams ? `/admin/reports/search?${queryParams}` : '/admin/reports/search';
-    return await this.request(endpoint);
+    const endpoint = queryParams ? `/reports?${queryParams}` : '/reports';
+    
+    try {
+      // First try the admin-specific endpoint
+      const adminEndpoint = queryParams ? `/admin/reports/search?${queryParams}` : '/admin/reports/search';
+      return await this.request(adminEndpoint);
+    } catch (err) {
+      console.log('Falling back to general reports endpoint:', err.message);
+      // Fall back to the general reports endpoint if the admin endpoint fails
+      return await this.request(endpoint);
+    }
   }
 
   async bulkUpdateReportStatus(reportIds, status, comment = '') {

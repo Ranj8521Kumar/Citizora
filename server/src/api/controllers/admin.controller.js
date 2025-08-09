@@ -157,7 +157,8 @@ exports.getDashboardAnalytics = async (req, res, next) => {
       reportsByPriority,
       usersByRole,
       reportsOverTime,
-      averageResolutionTime
+      averageResolutionTime,
+      latestReports
     ] = await Promise.all([
       // Total counts
       User.countDocuments(),
@@ -249,7 +250,13 @@ exports.getDashboardAnalytics = async (req, res, next) => {
             totalResolved: { $sum: 1 }
           }
         }
-      ])
+      ]),
+      
+      // Latest reports for activity feed
+      Report.find()
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('reportedBy', 'name email')
     ]);
 
     // Calculate performance metrics
@@ -281,6 +288,7 @@ exports.getDashboardAnalytics = async (req, res, next) => {
           usersByRole,
           reportsOverTime
         },
+        latestReports,
         timeframe,
         generatedAt: new Date()
       }

@@ -978,43 +978,37 @@ exports.bulkDeleteReports = async (req, res, next) => {
       return next(new ApiError('All reportIds must be valid ObjectIds', 400));
     }
 
-    // Find reports
+    // Find reports before deleting them
     const reports = await Report.find({ _id: { $in: validObjectIds } });
 
     if (reports.length === 0) {
       return next(new ApiError('No reports found with the provided IDs', 404));
     }
 
-    // Update reports to closed status
-    const updatePromises = reports.map(async (report) => {
-      await report.addTimelineEvent(
-        'closed',
-        reason || 'Report closed by administrator',
-        req.user._id
-      );
-
-      // Create notification for report submitter
-      await Notification.create({
+    // Create notifications for report submitters before deleting reports
+    const notificationPromises = reports.map(report => 
+      Notification.create({
         recipient: report.submittedBy,
-        type: 'report_status',
-        title: 'Report Closed',
-        message: `Your report "${report.title}" has been closed. ${reason ? 'Reason: ' + reason : ''}`,
+        type: 'report_deleted',
+        title: 'Report Deleted',
+        message: `Your report "${report.title}" has been deleted. ${reason ? 'Reason: ' + reason : ''}`,
         relatedTo: {
           model: 'Report',
           id: report._id
         }
-      });
+      })
+    );
 
-      return report;
-    });
-
-    await Promise.all(updatePromises);
+    await Promise.all(notificationPromises);
+    
+    // Permanently delete the reports from the database
+    const deleteResult = await Report.deleteMany({ _id: { $in: validObjectIds } });
 
     res.status(200).json({
       success: true,
-      message: `Successfully closed ${reports.length} reports`,
+      message: `Successfully deleted ${deleteResult.deletedCount} reports`,
       data: {
-        closedCount: reports.length,
+        deletedCount: deleteResult.deletedCount,
         reason: reason || 'No reason provided',
         reportIds: reports.map(r => r._id)
       }

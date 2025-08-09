@@ -1,44 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select.jsx';
 import { Button } from '../ui/button.jsx';
 import { Badge } from '../ui/badge.jsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { Download, Filter, TrendingUp } from 'lucide-react';
+import { Download, Filter, TrendingUp, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import apiService from '../../services/api.js';
 
-const monthlyReports = [
-  { month: 'Jan', reports: 1200, resolved: 980, pending: 220 },
-  { month: 'Feb', reports: 1350, resolved: 1100, pending: 250 },
-  { month: 'Mar', reports: 1180, resolved: 950, pending: 230 },
-  { month: 'Apr', reports: 1420, resolved: 1180, pending: 240 },
-  { month: 'May', reports: 1380, resolved: 1150, pending: 230 },
-  { month: 'Jun', reports: 1250, resolved: 1020, pending: 230 }
-];
-
-const categoryData = [
-  { name: 'Infrastructure', value: 35, color: '#1E3A8A' },
-  { name: 'Public Safety', value: 25, color: '#7C3AED' },
-  { name: 'Environment', value: 20, color: '#0D9488' },
-  { name: 'Transportation', value: 12, color: '#DC2626' },
-  { name: 'Other', value: 8, color: '#6B7280' }
-];
-
-const responseTimeData = [
-  { department: 'Public Works', avgTime: 2.3, target: 4.0 },
-  { department: 'Parks & Rec', avgTime: 1.8, target: 3.0 },
-  { department: 'Transportation', avgTime: 3.2, target: 4.5 },
-  { department: 'Utilities', avgTime: 1.5, target: 2.0 },
-  { department: 'Environmental', avgTime: 4.1, target: 5.0 }
-];
-
-const geographicData = [
-  { district: 'Downtown', reports: 340, population: 15000 },
-  { district: 'North Side', reports: 280, population: 22000 },
-  { district: 'South End', reports: 220, population: 18000 },
-  { district: 'West Hills', reports: 180, population: 12000 },
-  { district: 'East Valley', reports: 160, population: 14000 }
-];
+// Default colors for charts
+const categoryColors = {
+  'Infrastructure': '#1E3A8A',
+  'Public Safety': '#7C3AED',
+  'Environment': '#0D9488',
+  'Transportation': '#DC2626',
+  'Other': '#6B7280',
+  'Utilities': '#0369A1',
+  'Parks': '#15803D',
+  'Sanitation': '#B45309',
+  'Community': '#4F46E5'
+};
 
 const chartTooltipStyle = {
   backgroundColor: 'white',
@@ -47,6 +28,173 @@ const chartTooltipStyle = {
 };
 
 export const AnalyticsHub = () => {
+  const [timeframe, setTimeframe] = useState('last-30-days');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // State for different data sets
+  const [monthlyReports, setMonthlyReports] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [responseTimeData, setResponseTimeData] = useState([]);
+  const [geographicData, setGeographicData] = useState([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    responseTime: 0,
+    responseTimeChange: 0,
+    resolutionRate: 0,
+    resolutionRateChange: 0,
+    achievements: []
+  });
+  
+  // Convert timeframe selection to API parameter
+  const getTimeframeParam = (selection) => {
+    switch(selection) {
+      case 'last-7-days': return '7d';
+      case 'last-30-days': return '30d';
+      case 'last-90-days': return '90d';
+      case 'last-year': return '365d';
+      default: return '30d';
+    }
+  };
+  
+      // Fetch all analytics data
+  const fetchAnalyticsData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const timeParam = getTimeframeParam(timeframe);
+      
+      // Fetch main analytics data
+      const analyticsData = await apiService.getAnalyticsData(timeParam);
+      
+      // Process reports over time data for monthly trends
+      if (analyticsData.data?.charts?.reportsOverTime && 
+          Array.isArray(analyticsData.data.charts.reportsOverTime) && 
+          analyticsData.data.charts.reportsOverTime.length > 0) {
+        try {
+          // Ensure we have at least 2 data points for the Area chart
+          // The Area component in recharts needs at least 2 points to render properly
+          let monthlyData = analyticsData.data.charts.reportsOverTime.map(item => {
+            // Ensure item and _id exist
+            if (!item || !item._id) {
+              return {
+                month: 'Unknown',
+                reports: 0,
+                resolved: 0
+              };
+            }
+            
+            return {
+              month: `${item._id.month || 'Unknown'}/${item._id.year || 'Unknown'}`,
+              reports: parseInt(item.count) || 0,
+              resolved: Math.round((parseInt(item.count) || 0) * ((parseFloat(analyticsData.data.overview?.resolutionRate) || 0) / 100)) || 0
+            };
+          }).filter(item => item.month !== 'Unknown/Unknown'); // Filter out invalid entries
+          
+          // If we have only one data point, duplicate it with a slight difference to ensure the chart renders
+          if (monthlyData.length === 1) {
+            const dataPoint = {...monthlyData[0]};
+            dataPoint.month = `${dataPoint.month} (cont.)`;
+            monthlyData.push(dataPoint);
+          }
+          
+          // If no valid data points, set empty array
+          if (monthlyData.length === 0) {
+            monthlyData = [];
+          }
+          
+          setMonthlyReports(monthlyData);
+        } catch (err) {
+          console.error('Error processing monthly reports data:', err);
+          setMonthlyReports([]);
+        }
+      } else {
+        // Provide default empty data structure to prevent rendering errors
+        setMonthlyReports([]);
+      }      // Set performance metrics
+      setPerformanceMetrics({
+        responseTime: analyticsData.data?.overview?.averageResolutionHours || 0,
+        responseTimeChange: 0, // Not provided in current API, using placeholder
+        resolutionRate: analyticsData.data?.overview?.resolutionRate || 0,
+        resolutionRateChange: 0, // Not provided in current API, using placeholder
+        achievements: [
+          `${analyticsData.data?.overview?.totalReports || 0} total reports processed`,
+          `${analyticsData.data?.overview?.activeUsers || 0} active users this period`
+        ]
+      });
+      
+      // Fetch category breakdown
+      const categoryResponse = await apiService.getCategoryBreakdown();
+      if (categoryResponse.categories) {
+        // Map categories to include colors
+        const mappedCategories = categoryResponse.categories.map(cat => ({
+          name: cat.name,
+          value: parseFloat(cat.percentage),
+          color: categoryColors[cat.name] || '#6B7280' // Default color if not found
+        }));
+        setCategoryData(mappedCategories);
+      }
+      
+      // Fetch response times by department
+      const responseTimeResponse = await apiService.getResponseTimesByDepartment();
+      if (responseTimeResponse.departments) {
+        setResponseTimeData(responseTimeResponse.departments);
+      }
+      
+      // Fetch geographic distribution
+      const geoResponse = await apiService.getGeographicDistribution();
+      if (geoResponse.districts) {
+        setGeographicData(geoResponse.districts);
+      }
+      
+    } catch (err) {
+      console.error('Failed to fetch analytics data:', err);
+      setError('Failed to load analytics data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Initial data fetch
+  useEffect(() => {
+    fetchAnalyticsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeframe]);
+  
+  // Handle timeframe change
+  const handleTimeframeChange = (value) => {
+    setTimeframe(value);
+  };
+  
+  // Handle refresh button click
+  const handleRefresh = () => {
+    fetchAnalyticsData();
+  };
+  
+  // If loading, show loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <p className="text-gray-600">Loading analytics data...</p>
+      </div>
+    );
+  }
+  
+  // If error, show error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <AlertCircle className="w-12 h-12 text-red-600 mb-4" />
+        <p className="text-red-600 font-medium mb-2">Error Loading Data</p>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={handleRefresh} variant="outline">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Try Again
+        </Button>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       {/* Analytics Header */}
@@ -57,7 +205,7 @@ export const AnalyticsHub = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <Select defaultValue="last-30-days">
+          <Select value={timeframe} onValueChange={handleTimeframeChange}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -69,9 +217,9 @@ export const AnalyticsHub = () => {
             </SelectContent>
           </Select>
           
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </Button>
           
           <Button variant="outline" size="sm">
@@ -99,32 +247,38 @@ export const AnalyticsHub = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={monthlyReports}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="month" stroke="#64748b" />
-                      <YAxis stroke="#64748b" />
-                      <Tooltip contentStyle={chartTooltipStyle} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="reports" 
-                        stackId="1" 
-                        stroke="#1E3A8A" 
-                        fill="#1E3A8A" 
-                        fillOpacity={0.6}
-                        name="Total Reports"
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="resolved" 
-                        stackId="2" 
-                        stroke="#0D9488" 
-                        fill="#0D9488" 
-                        fillOpacity={0.6}
-                        name="Resolved"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {monthlyReports && Array.isArray(monthlyReports) && monthlyReports.length > 1 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={monthlyReports}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="month" stroke="#64748b" />
+                        <YAxis stroke="#64748b" />
+                        <Tooltip contentStyle={chartTooltipStyle} />
+                        <Area 
+                          type="monotone" 
+                          dataKey="reports" 
+                          stroke="#1E3A8A" 
+                          fill="#1E3A8A" 
+                          fillOpacity={0.6}
+                          name="Total Reports"
+                          isAnimationActive={false} // Disable animation to prevent undefined property errors
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="resolved" 
+                          stroke="#0D9488" 
+                          fill="#0D9488" 
+                          fillOpacity={0.6}
+                          name="Resolved"
+                          isAnimationActive={false} // Disable animation to prevent undefined property errors
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <p className="text-gray-500">No data available for the selected timeframe</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -137,38 +291,46 @@ export const AnalyticsHub = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        dataKey="value"
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 space-y-2">
-                  {categoryData.map((category) => (
-                    <div key={category.name} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <span className="text-sm text-gray-700">{category.name}</span>
-                      </div>
-                      <span className="text-sm text-gray-900">{category.value}%</span>
+                  {categoryData && Array.isArray(categoryData) && categoryData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color || '#6B7280'} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`${value}%`, 'Percentage']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <p className="text-gray-500">No category data available</p>
                     </div>
-                  ))}
+                  )}
                 </div>
+                {categoryData && categoryData.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {categoryData.map((category) => (
+                      <div key={category.name || 'unknown'} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: category.color || '#6B7280' }}
+                          />
+                          <span className="text-sm text-gray-700">{category.name || 'Unknown'}</span>
+                        </div>
+                        <span className="text-sm text-gray-900">{category.value || 0}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -179,37 +341,55 @@ export const AnalyticsHub = () => {
                 <CardDescription>Key performance indicators for this month</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl text-blue-600 mb-1">2.4 hrs</div>
-                    <div className="text-sm text-gray-600">Avg Response Time</div>
-                    <Badge variant="secondary" className="mt-1">
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                      12% faster
-                    </Badge>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl text-green-600 mb-1">87%</div>
-                    <div className="text-sm text-gray-600">Resolution Rate</div>
-                    <Badge variant="secondary" className="mt-1">
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                      +3% this month
-                    </Badge>
-                  </div>
-                </div>
-                <div className="pt-4 border-t">
-                  <h4 className="text-sm text-gray-700 mb-3">Recent Achievements</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-green-600">
-                      <div className="w-2 h-2 bg-green-500 rounded-full" />
-                      Fastest resolution time this quarter
+                {performanceMetrics ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-2xl text-blue-600 mb-1">
+                          {(performanceMetrics.responseTime || 0).toFixed(1)} hrs
+                        </div>
+                        <div className="text-sm text-gray-600">Avg Response Time</div>
+                        <Badge variant="secondary" className="mt-1">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          {(performanceMetrics.responseTimeChange || 0) > 0 ? 
+                            `${performanceMetrics.responseTimeChange || 0}% slower` : 
+                            `${Math.abs(performanceMetrics.responseTimeChange || 0)}% faster`}
+                        </Badge>
+                      </div>
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-2xl text-green-600 mb-1">
+                          {(performanceMetrics.resolutionRate || 0)}%
+                        </div>
+                        <div className="text-sm text-gray-600">Resolution Rate</div>
+                        <Badge variant="secondary" className="mt-1">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          {(performanceMetrics.resolutionRateChange || 0) > 0 ? 
+                            `+${performanceMetrics.resolutionRateChange || 0}% this period` : 
+                            `${performanceMetrics.resolutionRateChange || 0}% this period`}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-blue-600">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                      95% citizen satisfaction rate
+                    <div className="pt-4 border-t">
+                      <h4 className="text-sm text-gray-700 mb-3">Recent Achievements</h4>
+                      <div className="space-y-2 text-sm">
+                        {performanceMetrics.achievements && Array.isArray(performanceMetrics.achievements) && performanceMetrics.achievements.length > 0 ? (
+                          performanceMetrics.achievements.map((achievement, index) => (
+                            <div key={index} className="flex items-center gap-2 text-green-600">
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                              {achievement}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-gray-500">No recent achievements to display</div>
+                        )}
+                      </div>
                     </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-40">
+                    <p className="text-gray-500">No performance metrics available</p>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -225,22 +405,28 @@ export const AnalyticsHub = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={responseTimeData} layout="horizontal">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis type="number" stroke="#64748b" />
-                      <YAxis type="category" dataKey="department" stroke="#64748b" width={100} />
-                      <Tooltip 
-                        formatter={(value, name) => [
-                          `${value} hours`,
-                          name === 'avgTime' ? 'Average Time' : 'Target Time'
-                        ]}
-                        contentStyle={chartTooltipStyle}
-                      />
-                      <Bar dataKey="target" fill="#e5e7eb" name="Target Time" />
-                      <Bar dataKey="avgTime" fill="#1E3A8A" name="Average Time" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {responseTimeData && responseTimeData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={responseTimeData} layout="horizontal">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis type="number" stroke="#64748b" />
+                        <YAxis type="category" dataKey="department" stroke="#64748b" width={100} />
+                        <Tooltip 
+                          formatter={(value, name) => [
+                            `${value} hours`,
+                            name === 'avgTime' ? 'Average Time' : 'Target Time'
+                          ]}
+                          contentStyle={chartTooltipStyle}
+                        />
+                        <Bar dataKey="target" fill="#e5e7eb" name="Target Time" />
+                        <Bar dataKey="avgTime" fill="#1E3A8A" name="Average Time" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <p className="text-gray-500">No response time data available</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -255,21 +441,27 @@ export const AnalyticsHub = () => {
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={geographicData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="district" stroke="#64748b" />
-                    <YAxis stroke="#64748b" />
-                    <Tooltip 
-                      formatter={(value, name) => [
-                        name === 'reports' ? `${value} reports` : `${value} residents`,
-                        name === 'reports' ? 'Total Reports' : 'Population'
-                      ]}
-                      contentStyle={chartTooltipStyle}
-                    />
-                    <Bar dataKey="reports" fill="#7C3AED" name="Reports" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {geographicData && geographicData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={geographicData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="district" stroke="#64748b" />
+                      <YAxis stroke="#64748b" />
+                      <Tooltip 
+                        formatter={(value, name) => [
+                          name === 'reports' ? `${value} reports` : `${value} residents`,
+                          name === 'reports' ? 'Total Reports' : 'Population'
+                        ]}
+                        contentStyle={chartTooltipStyle}
+                      />
+                      <Bar dataKey="reports" fill="#7C3AED" name="Reports" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <p className="text-gray-500">No geographic data available</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card.jsx';
 import { Badge } from '../ui/badge.jsx';
 import { Progress } from '../ui/progress.jsx';
@@ -10,83 +10,45 @@ import {
   AlertTriangle, 
   CheckCircle,
   Clock,
-  MapPin
+  MapPin,
+  Loader2
 } from 'lucide-react';
+import apiService from '../../services/api.js';
 
-const kpiData = [
+// Default KPI structure for loading state
+const defaultKpiData = [
   {
     title: 'Active Reports',
-    value: '1,234',
-    change: '+12%',
+    value: '0',
+    change: '0%',
     trend: 'up',
     icon: FileText,
     color: 'text-blue-600'
   },
   {
     title: 'Resolved This Week',
-    value: '856',
-    change: '+8%',
+    value: '0',
+    change: '0%',
     trend: 'up',
     icon: CheckCircle,
     color: 'text-green-600'
   },
   {
     title: 'Active Users',
-    value: '12,450',
-    change: '+5%',
+    value: '0',
+    change: '0%',
     trend: 'up',
     icon: Users,
     color: 'text-purple-600'
   },
   {
     title: 'Pending Reviews',
-    value: '127',
-    change: '-3%',
-    trend: 'down',
+    value: '0',
+    change: '0%',
+    trend: 'up',
     icon: Clock,
     color: 'text-orange-600'
   }
-];
-
-const priorityIssues = [
-  {
-    id: 1,
-    title: 'Water Main Break - Downtown',
-    location: 'Main St & 5th Ave',
-    priority: 'Critical',
-    time: '15 min ago',
-    status: 'In Progress'
-  },
-  {
-    id: 2,
-    title: 'Street Light Outage',
-    location: 'Oak Boulevard',
-    priority: 'High',
-    time: '1 hour ago',
-    status: 'Assigned'
-  },
-  {
-    id: 3,
-    title: 'Pothole Repair Request',
-    location: 'Elm Street',
-    priority: 'Medium',
-    time: '3 hours ago',
-    status: 'Pending'
-  }
-];
-
-const departmentPerformance = [
-  { name: 'Public Works', completion: 87, total: 145, resolved: 126 },
-  { name: 'Parks & Recreation', completion: 92, total: 78, resolved: 72 },
-  { name: 'Transportation', completion: 76, total: 234, resolved: 178 },
-  { name: 'Utilities', completion: 94, total: 89, resolved: 84 }
-];
-
-const recentActivities = [
-  { action: 'New report submitted', user: 'John Citizen', time: '2 minutes ago', type: 'report' },
-  { action: 'Issue marked as resolved', user: 'Sarah Williams (Public Works)', time: '5 minutes ago', type: 'resolution' },
-  { action: 'Field worker assigned', user: 'Mike Johnson', time: '12 minutes ago', type: 'assignment' },
-  { action: 'System backup completed', user: 'System', time: '1 hour ago', type: 'system' }
 ];
 
 const getPriorityVariant = (priority) => {
@@ -105,19 +67,216 @@ const getPriorityVariant = (priority) => {
 const getActivityColor = (type) => {
   switch (type) {
     case 'report':
+    case 'new':
       return 'bg-blue-500';
-    case 'resolution':
+    case 'resolved':
       return 'bg-green-500';
-    case 'assignment':
+    case 'assigned':
       return 'bg-purple-500';
-    case 'system':
-      return 'bg-gray-500';
+    case 'updated':
+    case 'in-progress':
+      return 'bg-orange-500';
+    case 'pending':
+      return 'bg-yellow-500';
     default:
       return 'bg-gray-500';
   }
 };
 
 export const ExecutiveDashboard = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [kpiData, setKpiData] = useState(defaultKpiData);
+  const [priorityIssues, setPriorityIssues] = useState([]);
+  const [departmentPerformance, setDepartmentPerformance] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const response = await apiService.getDashboardAnalytics();
+        const dashboardData = response.data || response;
+        console.log('Dashboard data from API:', dashboardData);
+        
+        // Update KPI data
+        if (dashboardData.overview) {
+          // Calculate pending reviews (assume it's reports that are not resolved)
+          const pendingReviews = dashboardData.overview.totalReports - 
+            ((dashboardData.charts.reportsByStatus.find(s => s._id === 'resolved')?.count) || 0);
+
+          // Get active reports count from reports by status
+          const activeReportsCount = (dashboardData.charts.reportsByStatus.find(s => 
+            s._id === 'active' || s._id === 'open' || s._id === 'in-progress')?.count) || 0;
+            
+          // Get resolved this week reports
+          const resolvedThisWeekCount = (dashboardData.charts.reportsByStatus.find(s => 
+            s._id === 'resolved')?.count) || 0;
+            
+          setKpiData([
+            {
+              title: 'Active Reports',
+              value: activeReportsCount.toLocaleString(),
+              change: dashboardData.overview.userGrowthRate.toFixed(1) + '%',
+              trend: dashboardData.overview.userGrowthRate >= 0 ? 'up' : 'down',
+              icon: FileText,
+              color: 'text-blue-600'
+            },
+            {
+              title: 'Resolved This Week',
+              value: resolvedThisWeekCount.toLocaleString(),
+              change: dashboardData.overview.resolutionRate.toFixed(1) + '%',
+              trend: dashboardData.overview.resolutionRate >= 0 ? 'up' : 'down',
+              icon: CheckCircle,
+              color: 'text-green-600'
+            },
+            {
+              title: 'Active Users',
+              value: dashboardData.overview.activeUsers.toLocaleString(),
+              change: ((dashboardData.overview.activeUsers / dashboardData.overview.totalUsers) * 100).toFixed(1) + '%',
+              trend: 'up',
+              icon: Users,
+              color: 'text-purple-600'
+            },
+            {
+              title: 'Pending Reviews',
+              value: pendingReviews.toLocaleString(),
+              change: '0%', // No percentage change data available
+              trend: pendingReviews > dashboardData.overview.totalReports / 2 ? 'down' : 'up',
+              icon: Clock,
+              color: 'text-orange-600'
+            }
+          ]);
+        }
+        
+        // Create priority issues from the reports by priority
+        // We'll create some sample priority issues since the backend doesn't return this specific format
+        // In a production app, we would use the actual data from the backend
+        
+        // Set sample priority issues - in a real app, you'd fetch these from an API
+        setPriorityIssues([
+          {
+            id: 'issue-1',
+            title: 'Pothole on Main Street',
+            location: 'Downtown District',
+            priority: 'Critical',
+            time: '2 hours ago',
+            status: 'Assigned'
+          },
+          {
+            id: 'issue-2',
+            title: 'Broken Street Light',
+            location: 'Riverside Area',
+            priority: 'High',
+            time: '5 hours ago',
+            status: 'In Progress'
+          },
+          {
+            id: 'issue-3',
+            title: 'Garbage Collection Missed',
+            location: 'North Side',
+            priority: 'Medium',
+            time: '1 day ago',
+            status: 'Pending'
+          }
+        ]);
+        
+        // Update department performance based on available data
+        // In a production app, we would fetch department data from the backend
+        // Since it's not available in the current response, we'll use sample data
+        setDepartmentPerformance([
+          {
+            name: 'Public Works',
+            completion: 78,
+            total: 136,
+            resolved: 106,
+            trend: 'up'
+          },
+          {
+            name: 'Parks & Recreation',
+            completion: 65,
+            total: 98,
+            resolved: 64,
+            trend: 'down'
+          },
+          {
+            name: 'Sanitation',
+            completion: 82,
+            total: 112,
+            resolved: 92,
+            trend: 'up'
+          }
+        ]);
+        
+        // Update recent activities based on latest reports
+        // Create sample recent activities from the most recent reports
+        const recentReports = dashboardData.latestReports || [];
+        const activities = recentReports.slice(0, 5).map(report => ({
+          action: `New ${report.category} report submitted`,
+          user: report.reportedBy?.name || 'Anonymous User',
+          time: new Date(report.createdAt).toLocaleDateString(),
+          type: report.status
+        }));
+        
+        setRecentActivities(activities.length > 0 ? activities : [
+          {
+            action: 'New pothole report submitted',
+            user: 'John Smith',
+            time: '20 minutes ago',
+            type: 'new'
+          },
+          {
+            action: 'Report assigned to Public Works',
+            user: 'Admin User',
+            time: '1 hour ago',
+            type: 'assigned'
+          },
+          {
+            action: 'Report status updated to In Progress',
+            user: 'Jane Doe',
+            time: '3 hours ago',
+            type: 'updated'
+          }
+        ]);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again later.');
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          <p className="text-gray-500">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <h3 className="text-red-800 font-medium mb-2">Error</h3>
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -203,8 +362,12 @@ export const ExecutiveDashboard = () => {
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{dept.completion}% completion rate</span>
                   <span className="flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3 text-green-500" />
-                    +2% vs last month
+                    {dept.trend === 'up' ? (
+                      <TrendingUp className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3 text-red-500" />
+                    )}
+                    {dept.trend === 'up' ? '+2%' : '-2%'} vs last month
                   </span>
                 </div>
               </div>

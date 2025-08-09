@@ -15,7 +15,8 @@ import {
   UserCheck,
   Shield,
   Home,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 
 const navigationItems = [
@@ -27,7 +28,7 @@ const navigationItems = [
   { id: 'settings', label: 'System Administration', icon: Shield },
 ];
 
-export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
+export const DashboardLayout = ({ children, activeTab, onTabChange, user, onLogout }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -94,6 +95,33 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
             )}
           </div>
         </div>
+        
+        {/* User Profile (Mobile) */}
+        {mobileSidebarOpen && user && (
+          <div className="p-4 border-b border-blue-800">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarImage src={user.profileImage} alt={user.firstName} />
+                <AvatarFallback className="bg-blue-700 text-white">
+                  {user.firstName?.[0]}{user.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-white font-medium">{user.firstName} {user.lastName}</p>
+                <p className="text-blue-200 text-xs">{user.email}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full mt-3 justify-start gap-2 text-blue-200 hover:text-white hover:bg-white/10"
+              onClick={onLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </Button>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 p-4" role="navigation" aria-label="Main navigation">
@@ -198,14 +226,35 @@ export const DashboardLayout = ({ children, activeTab, onTabChange }) => {
               </Button>
               
               {/* User Profile */}
-              <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src="/placeholder-avatar.jpg" alt="Admin User" />
-                  <AvatarFallback>AD</AvatarFallback>
+              <div className="relative group flex items-center gap-3 pl-4 border-l border-gray-200">
+                <Avatar className="w-8 h-8 cursor-pointer">
+                  <AvatarImage src={user?.profileImage} alt={user?.firstName} />
+                  <AvatarFallback className="bg-blue-600 text-white">
+                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block">
-                  <p className="text-sm text-gray-900">Admin User</p>
-                  <p className="text-xs text-gray-500">Super Administrator</p>
+                  <p className="text-sm text-gray-900">{user?.firstName} {user?.lastName}</p>
+                  <p className="text-xs text-gray-500">{user?.role || 'Administrator'}</p>
+                </div>
+                
+                {/* Dropdown Menu */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                  {user && (
+                    <div className="px-4 py-2 border-b">
+                      <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={onLogout}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    <span>Logout</span>
+                  </Button>
                 </div>
               </div>
             </div>

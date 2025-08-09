@@ -26,20 +26,8 @@ import {
   UserCog,
   Wrench
 } from 'lucide-react';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from '../ui/dropdown-menu.jsx';
 import apiService from '../../services/api.js';
 import { AddUserModal } from './AddUserModal.jsx';
-import { UserProfileModal } from './UserProfileModal.jsx';
-import { EditUserModal } from './EditUserModal.jsx';
-import { SendMessageModal } from './SendMessageModal.jsx';
-import { DeactivateUserModal } from './DeactivateUserModal.jsx';
-import { showToast } from '../../utils/toast.js';
 
 // Default role stats for loading state
 const defaultRoleStats = [
@@ -73,67 +61,6 @@ export const UserManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [actionInProgress, setActionInProgress] = useState(false);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
-  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
-  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
-  
-  // Handle deactivate user confirmation
-  const handleDeleteUser = async (userId) => {
-    if (!userId) {
-      showToast({
-        title: 'Error',
-        message: 'User ID is missing. Cannot delete user.',
-        type: 'error'
-      });
-      return;
-    }
-    
-    try {
-      setActionInProgress(true);
-      
-      // Call API to deactivate the user (soft delete since true deletion isn't supported)
-      const result = await apiService.deleteUser(userId);
-      
-      // Update local state
-      if (result.softDelete) {
-        // For soft delete (deactivation), update the user's status to Inactive
-        setUserData(prev => prev.map(user => 
-          user.id === userId 
-            ? {...user, status: 'Inactive'} 
-            : user
-        ));
-        
-        showToast({
-          title: 'Success',
-          message: 'User has been deactivated successfully',
-          type: 'success'
-        });
-      } else {
-        // For hard delete (if API supported it), remove from UI
-        setUserData(prev => prev.filter(user => user.id !== userId));
-        
-        showToast({
-          title: 'Success',
-          message: 'User was deleted successfully',
-          type: 'success'
-        });
-      }
-      
-      // Refresh the user list to ensure UI is in sync with backend
-      await handleRefresh();
-    } catch (error) {
-      console.error('Error deleting/deactivating user:', error);
-      showToast({
-        title: 'Error',
-        message: 'Failed to delete user. Please try again.',
-        type: 'error'
-      });
-    } finally {
-      setActionInProgress(false);
-    }
-  };
   
   // Function to fetch users data
   const fetchUsers = async () => {
@@ -751,54 +678,13 @@ export const UserManagement = () => {
                             >
                               <UserCog className="w-4 h-4 text-blue-500" title="Change role" />
                             </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  aria-label={`More options for ${user.name}`}
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem 
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setIsUserProfileModalOpen(true);
-                                  }}
-                                >
-                                  View Profile
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setIsEditUserModalOpen(true);
-                                  }}
-                                >
-                                  Edit User
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setIsSendMessageModalOpen(true);
-                                  }}
-                                >
-                                  Send Message
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-red-600"
-                                  onClick={() => {
-                                    setSelectedUser(user);
-                                    setIsDeleteUserModalOpen(true);
-                                  }}
-                                >
-                                  Deactivate User
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              aria-label={`More options for ${user.name}`}
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -973,54 +859,13 @@ export const UserManagement = () => {
                               >
                                 <UserCog className="w-4 h-4 text-blue-500" title="Promote to Field Worker" />
                               </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    aria-label={`More options for ${user.name}`}
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsUserProfileModalOpen(true);
-                                    }}
-                                  >
-                                    View Profile
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsEditUserModalOpen(true);
-                                    }}
-                                  >
-                                    Edit User
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsSendMessageModalOpen(true);
-                                    }}
-                                  >
-                                    Send Message
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-red-600"
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsDeleteUserModalOpen(true);
-                                    }}
-                                  >
-                                    Deactivate User
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                aria-label={`More options for ${user.name}`}
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1220,54 +1065,13 @@ export const UserManagement = () => {
                               >
                                 <UserCog className="w-4 h-4 text-blue-500" title="Change role" />
                               </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    aria-label={`More options for ${user.name}`}
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsUserProfileModalOpen(true);
-                                    }}
-                                  >
-                                    View Profile
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsEditUserModalOpen(true);
-                                    }}
-                                  >
-                                    Edit User
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsSendMessageModalOpen(true);
-                                    }}
-                                  >
-                                    Send Message
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-red-600"
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsDeleteUserModalOpen(true);
-                                    }}
-                                  >
-                                    Deactivate Staff
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                aria-label={`More options for ${user.name}`}
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1441,54 +1245,13 @@ export const UserManagement = () => {
                               >
                                 <UserCog className="w-4 h-4 text-blue-500" title="Change role" />
                               </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    aria-label={`More options for ${user.name}`}
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsUserProfileModalOpen(true);
-                                    }}
-                                  >
-                                    View Profile
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsEditUserModalOpen(true);
-                                    }}
-                                  >
-                                    Edit User
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsSendMessageModalOpen(true);
-                                    }}
-                                  >
-                                    Contact User
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-red-600"
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsDeleteUserModalOpen(true);
-                                    }}
-                                  >
-                                    Deactivate User
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                aria-label={`More options for ${user.name}`}
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1515,51 +1278,6 @@ export const UserManagement = () => {
       onOpenChange={setIsAddUserModalOpen}
       onSuccess={() => {
         fetchUsers();
-      }}
-    />
-
-    {/* User Profile Modal */}
-    <UserProfileModal
-      user={selectedUser}
-      open={isUserProfileModalOpen}
-      onOpenChange={setIsUserProfileModalOpen}
-    />
-
-    {/* Edit User Modal */}
-    <EditUserModal
-      user={selectedUser}
-      open={isEditUserModalOpen}
-      onOpenChange={setIsEditUserModalOpen}
-      onSuccess={(updatedUser) => {
-        // Update user data in the state
-        setUserData(prev => prev.map(u => 
-          u.id === updatedUser.id ? { ...u, ...updatedUser } : u
-        ));
-      }}
-    />
-
-    {/* Send Message Modal */}
-    <SendMessageModal
-      user={selectedUser}
-      open={isSendMessageModalOpen}
-      onOpenChange={setIsSendMessageModalOpen}
-      onSuccess={() => {
-        // You could add additional actions here after a message is sent
-        showToast({
-          title: 'Message Sent',
-          message: `Your message has been delivered to ${selectedUser?.name}`,
-          type: 'success'
-        });
-      }}
-    />
-
-    {/* Deactivate User Modal */}
-    <DeactivateUserModal
-      user={selectedUser}
-      open={isDeleteUserModalOpen}
-      onOpenChange={setIsDeleteUserModalOpen}
-      onSuccess={(deletedUserId) => {
-        handleDeleteUser(deletedUserId);
       }}
     />
     </>

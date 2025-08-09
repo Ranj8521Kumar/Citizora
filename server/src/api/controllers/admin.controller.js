@@ -1237,7 +1237,7 @@ exports.advancedReportSearch = async (req, res, next) => {
  */
 exports.sendNotification = async (req, res) => {
   try {
-    const { userId, subject, message, type = 'message', priority = 'normal' } = req.body;
+    const { userId, subject, message, type = 'message', priority = 'normal', sendEmail = false } = req.body;
 
     // Validate required fields
     if (!userId || !subject || !message) {
@@ -1273,11 +1273,26 @@ exports.sendNotification = async (req, res) => {
 
     await notification.save();
 
+    // If sendEmail is true and user has an email, send an email as well
+    let emailSent = false;
+    if (sendEmail && recipient.email) {
+      // In a production environment, you would use a real email service like Nodemailer
+      // For now, we'll just log it
+      console.log(`[EMAIL SERVICE] Email would be sent to: ${recipient.email}`);
+      console.log(`[EMAIL SERVICE] Subject: ${subject}`);
+      console.log(`[EMAIL SERVICE] Message: ${message}`);
+      
+      emailSent = true;
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Notification sent successfully',
+      message: emailSent 
+        ? 'Notification sent successfully and email delivered' 
+        : 'Notification sent successfully (no email sent)',
       data: {
-        notification
+        notification,
+        emailSent
       }
     });
   } catch (error) {

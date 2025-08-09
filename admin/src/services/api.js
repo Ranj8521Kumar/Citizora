@@ -326,12 +326,23 @@ class ApiService {
   }
 
   async advancedReportSearch(filters = {}) {
-    const queryParams = new URLSearchParams(filters).toString();
+    // Convert filters object to query string, ensuring undefined values are omitted
+    const cleanedFilters = {};
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined) {
+        cleanedFilters[key] = filters[key];
+      }
+    });
+    
+    const queryParams = new URLSearchParams(cleanedFilters).toString();
+    console.log('Search query params:', queryParams);
+    
     const endpoint = queryParams ? `/reports?${queryParams}` : '/reports';
     
     try {
       // First try the admin-specific endpoint
       const adminEndpoint = queryParams ? `/admin/reports/search?${queryParams}` : '/admin/reports/search';
+      console.log('Requesting from admin endpoint:', this.baseURL + adminEndpoint);
       return await this.request(adminEndpoint);
     } catch (err) {
       console.log('Falling back to general reports endpoint:', err.message);

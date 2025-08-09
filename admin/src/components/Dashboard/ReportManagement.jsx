@@ -45,15 +45,29 @@ const getStatusVariant = (status) => {
   switch (status?.toLowerCase()) {
     case 'resolved':
       return 'success';
-    case 'in progress':
+    case 'in_progress':
       return 'default';
     case 'assigned':
       return 'secondary';
-    case 'pending':
+    case 'submitted':
       return 'warning';
+    case 'in_review':
+      return 'warning';
+    case 'closed':
+      return 'outline';
     default:
       return 'outline';
   }
+};
+
+// Format status for display
+const formatStatusForDisplay = (status) => {
+  if (!status) return '';
+  
+  // Replace underscores with spaces and capitalize each word
+  return status.split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 export const ReportManagement = () => {
@@ -68,12 +82,21 @@ export const ReportManagement = () => {
   const [sortDirection, setSortDirection] = useState('desc');
   const [actionInProgress, setActionInProgress] = useState(false);
   const [fieldWorkers, setFieldWorkers] = useState([]);
+  const [activeTab, setActiveTab] = useState('all-reports');
   
   // Fetch reports data
   useEffect(() => {
     const fetchReports = async () => {
       try {
         setLoading(true);
+        console.log('Fetching reports with filters:', {
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+          sort: sortField,
+          order: sortDirection,
+          query: searchTerm || undefined
+        });
+        
         const response = await apiService.advancedReportSearch({
           status: statusFilter !== 'all' ? statusFilter : undefined,
           priority: priorityFilter !== 'all' ? priorityFilter : undefined,
@@ -90,14 +113,18 @@ export const ReportManagement = () => {
         if (response.data?.reports) {
           // Server returns data in response.data.reports
           reportData = response.data.reports;
+          console.log('Found reports in response.data.reports', reportData.length);
         } else if (response.reports) {
           // Direct reports array
           reportData = response.reports;
+          console.log('Found reports in response.reports', reportData.length);
         } else if (Array.isArray(response)) {
           // Direct array response
           reportData = response;
+          console.log('Found reports in direct array', reportData.length);
         } else {
           reportData = [];
+          console.log('No reports found in response');
         }
         
         console.log('Report Data:', reportData);
@@ -166,6 +193,64 @@ export const ReportManagement = () => {
     );
   };
   
+  // Action controls component for reuse across tabs
+  const ActionControls = () => {
+    if (selectedReports.length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap items-center gap-3 p-3 bg-blue-50 rounded-lg mb-4">
+        <span className="text-sm text-blue-700">
+          {selectedReports.length} report{selectedReports.length > 1 ? 's' : ''} selected
+        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select 
+            onValueChange={(value) => handleBulkStatusUpdate(value)}
+            disabled={actionInProgress}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Update Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="submitted">Mark as Submitted</SelectItem>
+              <SelectItem value="in_review">Mark as In Review</SelectItem>
+              <SelectItem value="assigned">Mark as Assigned</SelectItem>
+              <SelectItem value="in_progress">Mark as In Progress</SelectItem>
+              <SelectItem value="resolved">Mark as Resolved</SelectItem>
+              <SelectItem value="closed">Mark as Closed</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select 
+            onValueChange={(value) => handleBulkAssign(value)}
+            disabled={actionInProgress || fieldWorkers.length === 0}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Assign To" />
+            </SelectTrigger>
+            <SelectContent>
+              {fieldWorkers.map(worker => (
+                <SelectItem key={worker._id} value={worker._id}>
+                  {worker.firstName} {worker.lastName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 text-xs"
+            disabled={actionInProgress}
+            onClick={() => handleBulkDelete()}
+          >
+            <Trash2 className="w-3 h-3 mr-1" />
+            Delete
+          </Button>
+        </div>
+      </div>
+    );
+  };
+  
   // Handle bulk status update
   const handleBulkStatusUpdate = async (newStatus) => {
     if (selectedReports.length === 0) return;
@@ -209,7 +294,7 @@ export const ReportManagement = () => {
             ? {
                 ...report, 
                 assignedTo: { _id: workerId, firstName: worker?.firstName, lastName: worker?.lastName },
-                status: report.status === 'pending' ? 'assigned' : report.status
+                status: report.status === 'submitted' ? 'assigned' : report.status
               } 
             : report
         )
@@ -282,7 +367,7 @@ export const ReportManagement = () => {
       });
   };
   
-  // Filter reports based on search and filters
+  // Filter reports based on search, filters, and active tab
   const filteredReports = useMemo(() => {
     if (!reports || reports.length === 0) {
       return [];
@@ -291,6 +376,11 @@ export const ReportManagement = () => {
     console.log('Filtering reports:', reports);
     
     return reports.filter(report => {
+      // Filter by tab/status first
+      if (activeTab !== 'all-reports' && report.status !== activeTab) {
+        return false;
+      }
+      
       // Handle potentially missing properties or different structures
       const title = report?.title || '';
       const description = report?.description || '';
@@ -323,7 +413,7 @@ export const ReportManagement = () => {
       
       return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [reports, searchTerm, statusFilter, priorityFilter]);
+  }, [reports, searchTerm, statusFilter, priorityFilter, activeTab]);
 
   // Debug logs
   console.log('Filtered Reports:', filteredReports);
@@ -363,12 +453,12 @@ export const ReportManagement = () => {
         </div>
       )}
       
-      <Tabs defaultValue="all-reports" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-5 lg:w-auto">
           <TabsTrigger value="all-reports">All Reports</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="submitted">Pending</TabsTrigger>
           <TabsTrigger value="assigned">Assigned</TabsTrigger>
-          <TabsTrigger value="in-progress">In Progress</TabsTrigger>
+          <TabsTrigger value="in_progress">In Progress</TabsTrigger>
           <TabsTrigger value="resolved">Resolved</TabsTrigger>
         </TabsList>
 
@@ -418,10 +508,12 @@ export const ReportManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="in_review">In Review</SelectItem>
                     <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="in progress">In Progress</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
                 
@@ -440,56 +532,7 @@ export const ReportManagement = () => {
               </div>
 
               {/* Bulk Actions */}
-              {selectedReports.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                  <span className="text-sm text-blue-700">
-                    {selectedReports.length} report{selectedReports.length > 1 ? 's' : ''} selected
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select 
-                      onValueChange={(value) => handleBulkStatusUpdate(value)}
-                      disabled={actionInProgress}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Update Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Pending">Mark as Pending</SelectItem>
-                        <SelectItem value="Assigned">Mark as Assigned</SelectItem>
-                        <SelectItem value="In Progress">Mark as In Progress</SelectItem>
-                        <SelectItem value="Resolved">Mark as Resolved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <Select 
-                      onValueChange={(value) => handleBulkAssign(value)}
-                      disabled={actionInProgress || fieldWorkers.length === 0}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Assign To" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fieldWorkers.map(worker => (
-                          <SelectItem key={worker._id} value={worker._id}>
-                            {worker.firstName} {worker.lastName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 text-xs"
-                      onClick={handleBulkDelete}
-                      disabled={actionInProgress}
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <ActionControls />
 
               {/* Reports Table */}
               <div className="border rounded-lg overflow-hidden">
@@ -553,7 +596,7 @@ export const ReportManagement = () => {
                           </TableCell>
                           <TableCell>
                             <Badge variant={getStatusVariant(report.status)}>
-                              {report.status?.replace('_', ' ')}
+                              {formatStatusForDisplay(report.status)}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -604,35 +647,375 @@ export const ReportManagement = () => {
           </Card>
         </TabsContent>
 
-        {/* Placeholder tabs for different report statuses */}
-        <TabsContent value="pending">
+        {/* Status-specific tab contents - all use the same table layout */}
+        <TabsContent value="submitted">
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-gray-500">Pending reports view would be displayed here</p>
+            <CardContent className="p-4">
+              <ActionControls />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={filteredReports.length > 0 && selectedReports.length === filteredReports.length} 
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedReports(filteredReports.map(r => r._id));
+                            } else {
+                              setSelectedReports([]);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('title')}>
+                        Report 
+                        {sortField === 'title' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('createdAt')}>
+                        Submitted 
+                        {sortField === 'createdAt' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                          <p className="mt-2 text-sm text-gray-500">Loading reports...</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <p className="text-gray-500">No pending reports found matching your criteria</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredReports.map((report) => (
+                        <TableRow key={report._id} className={selectedReports.includes(report._id) ? 'bg-blue-50' : ''}>
+                          <TableCell>
+                            <Checkbox 
+                              checked={selectedReports.includes(report._id)} 
+                              onCheckedChange={() => handleSelectReport(report._id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{report.title}</TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusVariant(report.status)}>
+                              {formatStatusForDisplay(report.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getPriorityVariant(report.priority)}>{report.priority}</Badge>
+                          </TableCell>
+                          <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {report.location?.address?.city}, {report.location?.address?.street}
+                          </TableCell>
+                          <TableCell>
+                            {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="assigned">
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-gray-500">Assigned reports view would be displayed here</p>
+            <CardContent className="p-4">
+              <ActionControls />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={filteredReports.length > 0 && selectedReports.length === filteredReports.length} 
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedReports(filteredReports.map(r => r._id));
+                            } else {
+                              setSelectedReports([]);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('title')}>
+                        Report 
+                        {sortField === 'title' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('createdAt')}>
+                        Submitted 
+                        {sortField === 'createdAt' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                          <p className="mt-2 text-sm text-gray-500">Loading reports...</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <p className="text-gray-500">No assigned reports found matching your criteria</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredReports.map((report) => (
+                        <TableRow key={report._id} className={selectedReports.includes(report._id) ? 'bg-blue-50' : ''}>
+                          <TableCell>
+                            <Checkbox 
+                              checked={selectedReports.includes(report._id)} 
+                              onCheckedChange={() => handleSelectReport(report._id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{report.title}</TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusVariant(report.status)}>
+                              {formatStatusForDisplay(report.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getPriorityVariant(report.priority)}>{report.priority}</Badge>
+                          </TableCell>
+                          <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {report.location?.address?.city}, {report.location?.address?.street}
+                          </TableCell>
+                          <TableCell>
+                            {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="in-progress">
+        <TabsContent value="in_progress">
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-gray-500">In Progress reports view would be displayed here</p>
+            <CardContent className="p-4">
+              <ActionControls />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={filteredReports.length > 0 && selectedReports.length === filteredReports.length} 
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedReports(filteredReports.map(r => r._id));
+                            } else {
+                              setSelectedReports([]);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('title')}>
+                        Report 
+                        {sortField === 'title' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('createdAt')}>
+                        Submitted 
+                        {sortField === 'createdAt' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                          <p className="mt-2 text-sm text-gray-500">Loading reports...</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <p className="text-gray-500">No in-progress reports found matching your criteria</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredReports.map((report) => (
+                        <TableRow key={report._id} className={selectedReports.includes(report._id) ? 'bg-blue-50' : ''}>
+                          <TableCell>
+                            <Checkbox 
+                              checked={selectedReports.includes(report._id)} 
+                              onCheckedChange={() => handleSelectReport(report._id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{report.title}</TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusVariant(report.status)}>
+                              {formatStatusForDisplay(report.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getPriorityVariant(report.priority)}>{report.priority}</Badge>
+                          </TableCell>
+                          <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {report.location?.address?.city}, {report.location?.address?.street}
+                          </TableCell>
+                          <TableCell>
+                            {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="resolved">
           <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-gray-500">Resolved reports view would be displayed here</p>
+            <CardContent className="p-4">
+              <ActionControls />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox 
+                          checked={filteredReports.length > 0 && selectedReports.length === filteredReports.length} 
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedReports(filteredReports.map(r => r._id));
+                            } else {
+                              setSelectedReports([]);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('title')}>
+                        Report 
+                        {sortField === 'title' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="cursor-pointer" onClick={() => handleSort('createdAt')}>
+                        Submitted 
+                        {sortField === 'createdAt' && (
+                          <ArrowUpDown className={`ml-2 h-4 w-4 inline ${sortDirection === 'desc' ? 'transform rotate-180' : ''}`} />
+                        )}
+                      </TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+                          <p className="mt-2 text-sm text-gray-500">Loading reports...</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8">
+                          <p className="text-gray-500">No resolved reports found matching your criteria</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredReports.map((report) => (
+                        <TableRow key={report._id} className={selectedReports.includes(report._id) ? 'bg-blue-50' : ''}>
+                          <TableCell>
+                            <Checkbox 
+                              checked={selectedReports.includes(report._id)} 
+                              onCheckedChange={() => handleSelectReport(report._id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{report.title}</TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusVariant(report.status)}>
+                              {formatStatusForDisplay(report.status)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getPriorityVariant(report.priority)}>{report.priority}</Badge>
+                          </TableCell>
+                          <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            {report.location?.address?.city}, {report.location?.address?.street}
+                          </TableCell>
+                          <TableCell>
+                            {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

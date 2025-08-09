@@ -1238,7 +1238,7 @@ exports.advancedReportSearch = async (req, res, next) => {
  */
 exports.sendNotification = async (req, res) => {
   try {
-    const { userId, subject, message, type = 'message', priority = 'normal', sendEmail = false } = req.body;
+    const { userId, subject, message, type = 'message', priority = 'normal', sendEmailOption = false } = req.body;
 
     // Validate required fields
     if (!userId || !subject || !message) {
@@ -1277,7 +1277,7 @@ exports.sendNotification = async (req, res) => {
     let emailSent = false;
     let emailError = null;
     
-    if (sendEmail && recipient.email) {
+    if (sendEmailOption && recipient.email) {
       try {
         console.log(`Attempting to send email to ${recipient.email}`);
         

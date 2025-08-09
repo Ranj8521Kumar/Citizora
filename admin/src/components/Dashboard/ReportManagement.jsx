@@ -8,6 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from '../ui/checkbox.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.jsx';
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '../ui/dropdown-menu.jsx';
+import { 
   Search, 
   Filter, 
   MoreHorizontal, 
@@ -20,7 +27,12 @@ import {
   UserCheck,
   Loader2,
   RefreshCw,
-  ArrowUpDown
+  ArrowUpDown,
+  Eye,
+  Edit,
+  MessageSquare,
+  User,
+  ClipboardList
 } from 'lucide-react';
 import apiService from '../../services/api.js';
 
@@ -263,6 +275,43 @@ export const ReportManagement = () => {
     );
   };
   
+  // Reusable ActionDropdown component
+  const ActionDropdown = ({ report }) => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => handleViewReport(report._id)}>
+            <Eye className="mr-2 h-4 w-4" />
+            <span>View Details</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleEditReport(report._id)}>
+            <Edit className="mr-2 h-4 w-4" />
+            <span>Edit Report</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleAssignReport(report._id)}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Assign</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleAddComment(report._id)}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            <span>Add Comment</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteReport(report._id)}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+  
   // Handle bulk status update
   const handleBulkStatusUpdate = async (newStatus) => {
     if (selectedReports.length === 0) return;
@@ -340,6 +389,47 @@ export const ReportManagement = () => {
       console.error('Error deleting reports:', err);
       setError('Failed to delete reports. Please try again.');
       setActionInProgress(false);
+    }
+  };
+
+  // Single report action handlers
+  const handleViewReport = (reportId) => {
+    console.log(`View report details for ID: ${reportId}`);
+    // In a real implementation, you might navigate to a details page or open a modal
+    alert(`Viewing details for report ID: ${reportId}`);
+  };
+
+  const handleEditReport = (reportId) => {
+    console.log(`Edit report with ID: ${reportId}`);
+    // In a real implementation, you might navigate to an edit page or open a modal
+    alert(`Editing report ID: ${reportId}`);
+  };
+
+  const handleAssignReport = (reportId) => {
+    console.log(`Assign report with ID: ${reportId}`);
+    // In a real implementation, you might open an assignment modal
+    const selectedWorker = fieldWorkers.length > 0 ? fieldWorkers[0] : null;
+    if (selectedWorker) {
+      handleBulkAssign(selectedWorker._id);
+    } else {
+      alert('No field workers available for assignment');
+    }
+  };
+
+  const handleDeleteReport = (reportId) => {
+    console.log(`Delete report with ID: ${reportId}`);
+    if (window.confirm('Are you sure you want to delete this report?')) {
+      setSelectedReports([reportId]);
+      handleBulkDelete();
+    }
+  };
+
+  const handleAddComment = (reportId) => {
+    console.log(`Add comment to report with ID: ${reportId}`);
+    // In a real implementation, you might open a comment modal
+    const comment = prompt('Enter your comment:');
+    if (comment) {
+      alert(`Comment added to report ID: ${reportId}: ${comment}`);
     }
   };
   
@@ -645,9 +735,7 @@ export const ReportManagement = () => {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" aria-label={`More options for ${report.title}`}>
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                            <ActionDropdown report={report} />
                           </TableCell>
                         </TableRow>
                       ))
@@ -739,9 +827,7 @@ export const ReportManagement = () => {
                             {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                            <ActionDropdown report={report} />
                           </TableCell>
                         </TableRow>
                       ))
@@ -832,9 +918,7 @@ export const ReportManagement = () => {
                             {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                            <ActionDropdown report={report} />
                           </TableCell>
                         </TableRow>
                       ))
@@ -925,9 +1009,7 @@ export const ReportManagement = () => {
                             {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                            <ActionDropdown report={report} />
                           </TableCell>
                         </TableRow>
                       ))
@@ -1018,9 +1100,7 @@ export const ReportManagement = () => {
                             {report.assignedTo ? `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned'}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                            <ActionDropdown report={report} />
                           </TableCell>
                         </TableRow>
                       ))

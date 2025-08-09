@@ -127,101 +127,233 @@ exports.getDashboardAnalytics = async (req, res, next) => {
 
     // Calculate date range based on timeframe
     const now = new Date();
-    let startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Default to 30 days
+    let startDate;
 
-    // Provide sample data as a temporary solution
-    console.log('Preparing mock dashboard data...');
+    switch (timeframe) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '1y':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    // Initialize data with default values
+    let totalUsers = 0;
+    let totalReports = 0;
+    let totalNotifications = 0;
+    let activeUsers = 0;
+    let recentReportsCount = 0;
+    let reportsByStatus = [];
+    let reportsByCategory = [];
+    let reportsByPriority = [];
+    let usersByRole = [];
+    let reportsOverTime = [];
+    let averageResolutionTime = [];
+    let latestReports = [];
+
+    // Fetch real data with individual try-catch blocks for each operation
+    try {
+      totalUsers = await User.countDocuments();
+      console.log('Fetched total users:', totalUsers);
+    } catch (err) {
+      console.error('Error fetching total users:', err);
+    }
+
+    try {
+      totalReports = await Report.countDocuments();
+      console.log('Fetched total reports:', totalReports);
+    } catch (err) {
+      console.error('Error fetching total reports:', err);
+    }
+
+    try {
+      totalNotifications = await Notification.countDocuments();
+      console.log('Fetched total notifications:', totalNotifications);
+    } catch (err) {
+      console.error('Error fetching total notifications:', err);
+    }
+
+    try {
+      activeUsers = await User.countDocuments({
+        lastLogin: { $gte: startDate },
+        isActive: true
+      });
+      console.log('Fetched active users:', activeUsers);
+    } catch (err) {
+      console.error('Error fetching active users:', err);
+    }
+
+    try {
+      recentReportsCount = await Report.countDocuments({
+        createdAt: { $gte: startDate }
+      });
+      console.log('Fetched recent reports count:', recentReportsCount);
+    } catch (err) {
+      console.error('Error fetching recent reports count:', err);
+    }
+
+    try {
+      reportsByStatus = await Report.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+      console.log('Fetched reports by status:', reportsByStatus.length);
+    } catch (err) {
+      console.error('Error fetching reports by status:', err);
+      reportsByStatus = [];
+    }
+
+    try {
+      reportsByCategory = await Report.aggregate([
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+      console.log('Fetched reports by category:', reportsByCategory.length);
+    } catch (err) {
+      console.error('Error fetching reports by category:', err);
+      reportsByCategory = [];
+    }
+
+    try {
+      reportsByPriority = await Report.aggregate([
+        { $group: { _id: '$priority', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+      console.log('Fetched reports by priority:', reportsByPriority.length);
+    } catch (err) {
+      console.error('Error fetching reports by priority:', err);
+      reportsByPriority = [];
+    }
+
+    try {
+      usersByRole = await User.aggregate([
+        { $group: { _id: '$role', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+      console.log('Fetched users by role:', usersByRole.length);
+    } catch (err) {
+      console.error('Error fetching users by role:', err);
+      usersByRole = [];
+    }
+
+    try {
+      reportsOverTime = await Report.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startDate }
+          }
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+              day: { $dayOfMonth: '$createdAt' }
+            },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+      ]);
+      console.log('Fetched reports over time:', reportsOverTime.length);
+    } catch (err) {
+      console.error('Error fetching reports over time:', err);
+      reportsOverTime = [];
+    }
+
+    try {
+      averageResolutionTime = await Report.aggregate([
+        {
+          $match: {
+            status: 'resolved'
+          }
+        },
+        {
+          $project: {
+            resolutionTime: {
+              $subtract: [new Date(), '$createdAt']
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            averageResolutionTime: { $avg: '$resolutionTime' },
+            totalResolved: { $sum: 1 }
+          }
+        }
+      ]);
+      console.log('Fetched average resolution time');
+    } catch (err) {
+      console.error('Error calculating average resolution time:', err);
+      averageResolutionTime = [{ averageResolutionTime: 0, totalResolved: 0 }];
+    }
+
+    try {
+      latestReports = await Report.find()
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate('reportedBy', 'name email');
+      console.log('Fetched latest reports:', latestReports.length);
+    } catch (err) {
+      console.error('Error fetching latest reports:', err);
+      latestReports = [];
+    }
     
-    // Sample data for dashboard - this avoids potential MongoDB errors
+    // Calculate performance metrics with real data
+    console.log('Calculating performance metrics...');
+    
+    // Calculate growth rate and resolution rate based on real data
+    const userGrowthRate = (recentReportsCount > 0 && totalReports > 0) ? 
+      ((recentReportsCount / totalReports) * 100).toFixed(2) : 0;
+    
+    const resolvedCount = reportsByStatus.find(s => s && s._id === 'resolved')?.count || 0;
+    const resolutionRate = (totalReports > 0) ? 
+      ((resolvedCount / totalReports) * 100).toFixed(2) : 0;
+
+    // Calculate average resolution time in hours
+    const avgResolutionHours = (averageResolutionTime && averageResolutionTime[0] && 
+      typeof averageResolutionTime[0].averageResolutionTime === 'number') ?
+      Math.round(averageResolutionTime[0].averageResolutionTime / (1000 * 60 * 60)) : 0;
+
+    // Prepare response with real data
+    console.log('Preparing response with real data...');
     const responseData = {
       success: true,
       data: {
         overview: {
-          totalUsers: 250,
-          totalReports: 325,
-          totalNotifications: 512,
-          activeUsers: 120,
-          recentReports: 45,
-          userGrowthRate: 12.5,
-          resolutionRate: 68.3,
-          averageResolutionHours: 48
+          totalUsers,
+          totalReports,
+          totalNotifications,
+          activeUsers,
+          recentReports: recentReportsCount,
+          userGrowthRate: parseFloat(userGrowthRate || 0),
+          resolutionRate: parseFloat(resolutionRate || 0),
+          averageResolutionHours: avgResolutionHours
         },
         charts: {
-          reportsByStatus: [
-            { _id: 'resolved', count: 210 },
-            { _id: 'in-progress', count: 65 },
-            { _id: 'pending', count: 50 }
-          ],
-          reportsByCategory: [
-            { _id: 'road_issue', count: 120 },
-            { _id: 'water_issue', count: 80 },
-            { _id: 'electricity_issue', count: 65 },
-            { _id: 'waste_management', count: 45 },
-            { _id: 'public_safety', count: 15 }
-          ],
-          reportsByPriority: [
-            { _id: 'high', count: 85 },
-            { _id: 'medium', count: 165 },
-            { _id: 'low', count: 75 }
-          ],
-          usersByRole: [
-            { _id: 'citizen', count: 200 },
-            { _id: 'fieldworker', count: 40 },
-            { _id: 'admin', count: 10 }
-          ],
-          reportsOverTime: [
-            { _id: { year: 2025, month: 7, day: 10 }, count: 12 },
-            { _id: { year: 2025, month: 7, day: 15 }, count: 15 },
-            { _id: { year: 2025, month: 7, day: 20 }, count: 18 },
-            { _id: { year: 2025, month: 8, day: 1 }, count: 22 },
-            { _id: { year: 2025, month: 8, day: 5 }, count: 20 },
-            { _id: { year: 2025, month: 8, day: 10 }, count: 16 }
-          ]
+          reportsByStatus,
+          reportsByCategory,
+          reportsByPriority,
+          usersByRole,
+          reportsOverTime
         },
-        latestReports: [
-          {
-            _id: '1',
-            title: 'Pothole on Main Street',
-            description: 'Large pothole causing traffic issues',
-            category: 'road_issue',
-            status: 'in-progress',
-            priority: 'high',
-            location: 'Main Street & 5th Avenue',
-            reportedBy: { name: 'John Smith', email: 'john@example.com' },
-            createdAt: new Date(Date.now() - 86400000),
-            updatedAt: new Date()
-          },
-          {
-            _id: '2',
-            title: 'Streetlight outage',
-            description: 'Multiple streetlights not working in neighborhood',
-            category: 'electricity_issue',
-            status: 'pending',
-            priority: 'medium',
-            location: 'Oak Avenue',
-            reportedBy: { name: 'Jane Doe', email: 'jane@example.com' },
-            createdAt: new Date(Date.now() - 172800000),
-            updatedAt: new Date(Date.now() - 86400000)
-          },
-          {
-            _id: '3',
-            title: 'Water leak',
-            description: 'Water leaking from pipe on street corner',
-            category: 'water_issue',
-            status: 'resolved',
-            priority: 'high',
-            location: 'Elm Street & Broadway',
-            reportedBy: { name: 'Michael Johnson', email: 'michael@example.com' },
-            createdAt: new Date(Date.now() - 259200000),
-            updatedAt: new Date(Date.now() - 172800000)
-          }
-        ],
+        latestReports,
         timeframe,
         generatedAt: new Date()
       }
     };
     
-    console.log('Sending response...');
+    console.log('Sending response with real data...');
     return res.status(200).json(responseData);
   } catch (error) {
     console.error('Error fetching dashboard analytics:', error);

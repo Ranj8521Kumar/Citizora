@@ -7,6 +7,7 @@ import { Switch } from '../ui/switch.jsx';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs.jsx';
 import { Separator } from '../ui/separator.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select.jsx';
+import { Badge } from '../ui/badge.jsx';
 import { Textarea } from '../ui/textarea.jsx';
 import { 
   AlertCircle, 

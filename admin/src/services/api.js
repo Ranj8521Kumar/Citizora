@@ -361,7 +361,7 @@ class ApiService {
   async bulkAssignReports(reportIds, employeeId, comment = '') {
     return await this.request('/admin/reports/bulk-assign', {
       method: 'POST',
-      body: JSON.stringify({ reportIds, employeeId, comment }),
+      body: JSON.stringify({ reportIds, assigneeId: employeeId, comment }),
     });
   }
 

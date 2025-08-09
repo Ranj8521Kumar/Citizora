@@ -166,9 +166,21 @@ export const ReportManagement = () => {
   useEffect(() => {
     const fetchFieldWorkers = async () => {
       try {
+        console.log('Fetching field workers...');
         const response = await apiService.getAllUsers();
-        const workers = response.users.filter(user => user.role === 'Field Worker' && user.active);
+        console.log('API response for users:', response);
+        
+        // Updated filtering - include active employees (which are our field workers)
+        const workers = response.users.filter(user => 
+          user.isActive && user.role === 'employee'
+        );
+        
+        console.log('Filtered field workers:', workers);
         setFieldWorkers(workers);
+        
+        // Log whether the dropdown would be enabled
+        console.log('Field workers length:', workers.length);
+        console.log('Dropdown would be enabled:', !(workers.length === 0));
       } catch (err) {
         console.error('Error fetching field workers:', err);
       }

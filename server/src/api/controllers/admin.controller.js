@@ -302,7 +302,7 @@ exports.getDashboardAnalytics = async (req, res, next) => {
       latestReports = await Report.find()
         .sort({ createdAt: -1 })
         .limit(10)
-        .populate('reportedBy', 'name email');
+        .populate('submittedBy', 'firstName lastName email');
       console.log('Fetched latest reports:', latestReports.length);
     } catch (err) {
       console.error('Error fetching latest reports:', err);
@@ -1033,6 +1033,8 @@ exports.bulkDeleteReports = async (req, res, next) => {
  */
 exports.advancedReportSearch = async (req, res, next) => {
   try {
+    console.log('Advanced Search Query params:', req.query);
+    
     const {
       page = 1,
       limit = 20,
@@ -1142,6 +1144,10 @@ exports.advancedReportSearch = async (req, res, next) => {
     const sortOptions = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
 
     // Execute queries in parallel
+    console.log('Query for reports:', JSON.stringify(query));
+    console.log('Sort options:', sortOptions);
+    console.log('Pagination:', { skip, limit: parseInt(limit) });
+    
     const [reports, totalReports, aggregateStats] = await Promise.all([
       Report.find(query)
         .populate('submittedBy', 'firstName lastName email')
@@ -1266,6 +1272,8 @@ exports.advancedReportSearch = async (req, res, next) => {
       avgResolutionHours: 0
     };
 
+    console.log('Found reports count:', reports.length);
+    
     res.status(200).json({
       success: true,
       data: {

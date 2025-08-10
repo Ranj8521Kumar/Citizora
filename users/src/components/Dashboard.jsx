@@ -93,7 +93,7 @@ export function Dashboard({ user, reports, onNavigate }) {
         year: 'numeric'
       });
     } catch (error) {
-      return 'Date not available';
+      return 'Date not available: ' + error.message;
     }
   };
 
@@ -108,7 +108,7 @@ export function Dashboard({ user, reports, onNavigate }) {
         minute: '2-digit'
       });
     } catch (error) {
-      return 'Date not available';
+      return 'Date not available: ' + error.message;
     }
   };
 
@@ -346,7 +346,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                         {selectedReport.images.map((image, index) => (
                           <img
                             key={index}
-                            src={image}
+                            src={typeof image === 'string' ? image : image.url}
                             alt={`Report image ${index + 1}`}
                             className="w-full h-20 object-cover rounded border"
                           />

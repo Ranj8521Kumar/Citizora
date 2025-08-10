@@ -54,6 +54,18 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
   // Update status when report changes (e.g., on refresh)
   useEffect(() => {
     setCurrentStatus(getInitialStatus(report));
+    
+    // Load images if they exist in the report data
+    if (report && report.images && Array.isArray(report.images)) {
+      const formattedPhotos = report.images.map(img => ({
+        id: img._id || img.id || Date.now(),
+        url: img.url,
+        timestamp: img.uploadedAt || img.timestamp || new Date().toISOString(),
+        reportId: report.id || report._id,
+        serverData: img
+      }));
+      setPhotos(formattedPhotos);
+    }
   }, [report]);
 
   if (!report) return null;
@@ -135,23 +147,94 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
     setIsPhotoCaptureOpen(true);
   };
   
-  const handlePhotoCapture = (photoDataUrl) => {
-    // Add the new photo to our collection
-    const newPhoto = {
-      id: Date.now(),
-      url: photoDataUrl,
-      timestamp: new Date().toISOString(),
-      reportId: report.id
-    };
-    setPhotos(prev => [...prev, newPhoto]);
-    
-    // Here you would normally upload the photo to your server
-    // This could call an API function like uploadReportPhoto(report.id, photoDataUrl)
+  const handlePhotoCapture = async (photoDataUrl) => {
+    try {
+      // Create a temporary photo object for the UI
+      const tempPhotoId = Date.now();
+      const newPhoto = {
+        id: tempPhotoId,
+        url: photoDataUrl,
+        timestamp: new Date().toISOString(),
+        reportId: report.id,
+        uploading: true
+      };
+      
+      // Add to local collection immediately for responsive UI
+      setPhotos(prev => [...prev, newPhoto]);
+      
+      // Convert data URL to Blob
+      const response = await fetch(photoDataUrl);
+      const blob = await response.blob();
+      
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append('images', blob, `photo_${tempPhotoId}.jpg`);
+      formData.append('reportId', report.id);
+      formData.append('description', 'Photo taken during field work');
+      
+      // Determine upload type based on report status
+      let uploadType = 'progress';
+      if (currentStatus === 'completed') {
+        uploadType = 'completion';
+      }
+      
+      // Upload to server
+      const { uploadImages } = await import('../services/api');
+      const result = await uploadImages(uploadType, formData);
+      
+      console.log('Photo upload successful:', result);
+      
+      // Update the photo in our collection with the server response
+      if (result.success && result.data && result.data.images && result.data.images.length > 0) {
+        // Replace the temporary photo with the server response
+        setPhotos(prev => prev.map(photo => 
+          photo.id === tempPhotoId 
+            ? { 
+                ...photo, 
+                id: result.data.images[0]._id || photo.id, 
+                url: result.data.images[0].url || photo.url,
+                uploading: false,
+                serverData: result.data.images[0]
+              } 
+            : photo
+        ));
+      } else {
+        // Mark as no longer uploading
+        setPhotos(prev => prev.map(photo => 
+          photo.id === tempPhotoId 
+            ? {...photo, uploading: false} 
+            : photo
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to upload photo:', error);
+      
+      // Show error on the photo
+      setPhotos(prev => prev.map(photo => 
+        photo.id === Date.now() 
+          ? {...photo, uploading: false, error: true} 
+          : photo
+      ));
+    }
   };
   
-  const handleDeletePhoto = (photoId) => {
-    setPhotos(prev => prev.filter(photo => photo.id !== photoId));
-    // If connected to API: deleteReportPhoto(photoId)
+  const handleDeletePhoto = async (photoId) => {
+    try {
+      // Optimistically remove from UI first
+      setPhotos(prev => prev.filter(photo => photo.id !== photoId));
+      
+      // If we have a server-side photo ID, delete from server
+      const photo = photos.find(p => p.id === photoId);
+      if (photo && photo.serverData && photo.serverData._id) {
+        // TODO: Add API call to delete photo when backend supports it
+        // const result = await deleteReportPhoto(photo.serverData._id);
+        console.log('Photo would be deleted from server:', photo.serverData._id);
+      }
+    } catch (error) {
+      console.error('Failed to delete photo:', error);
+      // Revert the deletion if server call fails
+      // We'd add the photo back to the collection here
+    }
   };
   
   // Function to handle navigation to the report location
@@ -449,19 +532,36 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
                 {photos.map((photo) => (
                   <div
                     key={photo.id}
-                    className="relative aspect-square rounded-lg border border-border overflow-hidden group"
+                    className={`relative aspect-square rounded-lg border border-border overflow-hidden group ${photo.error ? 'border-destructive' : ''}`}
                   >
                     <img 
                       src={photo.url} 
                       alt="Documentation" 
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover ${photo.uploading ? 'opacity-70' : ''}`}
                     />
+                    
+                    {/* Uploading indicator */}
+                    {photo.uploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    
+                    {/* Error indicator */}
+                    {photo.error && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-destructive text-destructive-foreground text-xs p-1 text-center">
+                        Upload failed
+                      </div>
+                    )}
+                    
+                    {/* Delete button overlay */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Button
                         variant="destructive"
                         size="icon"
                         className="w-8 h-8"
                         onClick={() => handleDeletePhoto(photo.id)}
+                        disabled={photo.uploading}
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -473,6 +573,7 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
               <div className="text-center py-8 bg-muted/50 rounded-lg">
                 <Camera className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
                 <p className="text-muted-foreground">No photos added yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Photos will be visible to citizens who submitted this report</p>
               </div>
             )}
             

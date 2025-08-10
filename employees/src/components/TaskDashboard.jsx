@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { downloadCSV, downloadJSON } from '../utils/csvExport';
+// Import without file extension, let vite resolve it
 import { ExportButton } from './ui/export-button';
 
 export function TaskDashboard({ onReportSelect }) {

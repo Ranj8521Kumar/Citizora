@@ -44,9 +44,9 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.536.0",
     "next-themes": "^0.4.6",
-    "react": "^19.1.0",
+    "react": "^19.1.1",
     "react-day-picker": "^9.8.1",
-    "react-dom": "^19.1.0",
+    "react-dom": "^19.1.1",
     "react-hook-form": "^7.62.0",
     "react-resizable-panels": "^3.0.4",
     "sonner": "^2.0.7",
@@ -67,5 +67,14 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "vite": "^7.0.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "overrides": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6"
   }
 }

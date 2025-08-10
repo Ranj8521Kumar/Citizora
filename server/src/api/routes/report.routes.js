@@ -62,4 +62,19 @@ router.post('/:id/feedback', reportController.addFeedback);
  */
 router.post('/:id/images', upload.array('images', 5), reportController.uploadReportImages);
 
+/**
+ * @route PATCH /api/reports/:id
+ * @desc Update a report (full update)
+ * @access Private (admin only)
+ */
+router.patch('/:id', restrictTo('admin'), async (req, res, next) => {
+  try {
+    // Import the updateReport controller
+    const { updateReport } = require('../controllers/updateReport');
+    return await updateReport(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

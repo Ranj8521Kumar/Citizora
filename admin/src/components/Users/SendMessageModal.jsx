@@ -23,7 +23,7 @@ export const SendMessageModal = ({ user, open, onOpenChange, onSuccess }) => {
     sendEmail: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [setIsSuccess] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Reset form when modal opens with new user
@@ -79,7 +79,7 @@ export const SendMessageModal = ({ user, open, onOpenChange, onSuccess }) => {
       return;
     }
     
-    if (!user || !user.id) {
+    if (!user || (!user.id && !user._id)) {
       showToast({
         title: 'Error',
         message: 'User information is missing. Cannot send message.',
@@ -92,7 +92,8 @@ export const SendMessageModal = ({ user, open, onOpenChange, onSuccess }) => {
     
     try {
       // Use our API service to send the message
-      const result = await apiService.sendMessage(user.id, {
+      const userId = user.id || user._id;
+      const result = await apiService.sendMessage(userId, {
         subject: formData.subject,
         message: formData.message,
         sendEmail: formData.sendEmail
@@ -103,11 +104,13 @@ export const SendMessageModal = ({ user, open, onOpenChange, onSuccess }) => {
       // Show success state in the modal
       setIsSuccess(true);
       
+      const userName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
+      
       showToast({
         title: 'Message Sent',
-        message: result.data.emailSent 
-          ? `Your message has been sent to ${user.name} and an email was delivered`
-          : `Your message has been sent to ${user.name} (no email sent)`,
+        message: result.data?.emailSent 
+          ? `Your message has been sent to ${userName} and an email was delivered`
+          : `Your message has been sent to ${userName} (no email sent)`,
         type: 'success'
       });
       
@@ -167,7 +170,7 @@ export const SendMessageModal = ({ user, open, onOpenChange, onSuccess }) => {
         <DialogHeader>
           <DialogTitle>Send Message</DialogTitle>
           <DialogDescription>
-            Send a message to {user?.name || 'this user'}
+            Send a message to {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'this user'}
           </DialogDescription>
         </DialogHeader>
         
@@ -176,7 +179,7 @@ export const SendMessageModal = ({ user, open, onOpenChange, onSuccess }) => {
             <Label htmlFor="to">To</Label>
             <Input
               id="to"
-              value={user?.email || ''}
+              value={user?.email || (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '')}
               readOnly
               disabled
             />

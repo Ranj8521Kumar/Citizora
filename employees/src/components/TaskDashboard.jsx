@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Clock, CheckCircle, Filter, Search, Star, ArrowRight } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, Filter, Search, Star, ArrowRight, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { downloadCSV, downloadJSON } from '../utils/csvExport';
+import { ExportButton } from './ui/export-button';
 
 export function TaskDashboard({ onReportSelect }) {
   const [filter, setFilter] = useState('all');
@@ -107,6 +109,21 @@ export function TaskDashboard({ onReportSelect }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => downloadCSV(reports, 'task-reports.csv')}
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+            <ExportButton 
+              onExportCSV={() => downloadCSV(reports, 'task-reports.csv')}
+              onExportJSON={() => downloadJSON(reports, 'task-reports.json')}
+              buttonSize="sm"
+              label="Export Options"
+            />
             <Button variant="outline" size="sm" className="gap-2">
               <Filter className="w-4 h-4" />
               Filter

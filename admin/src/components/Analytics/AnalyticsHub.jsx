@@ -7,6 +7,8 @@ import { Badge } from '../ui/badge.jsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { Download, Filter, TrendingUp, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import apiService from '../../services/api.js';
+import { downloadCSV, downloadJSON } from '../../utils/csvExport.js';
+import { ExportButton } from '../ui/export-button.jsx';
 
 // Default colors for charts
 const categoryColors = {
@@ -171,6 +173,96 @@ export const AnalyticsHub = () => {
     fetchAnalyticsData();
   };
   
+  // Handle export button click
+  const handleExportCSV = () => {
+    const timestamp = new Date().toISOString().slice(0, 10);
+    
+    // Export current view based on active tab
+    const activeTab = document.querySelector('[aria-selected="true"][role="tab"]');
+    const tabValue = activeTab ? activeTab.getAttribute('value') : 'overview';
+    
+    switch(tabValue) {
+      case 'overview':
+        // Export monthly reports
+        if (monthlyReports && monthlyReports.length > 0) {
+          downloadCSV(monthlyReports, `civic-connect-monthly-reports-${timestamp}.csv`);
+        }
+        break;
+      case 'performance':
+        // Export response time data
+        if (responseTimeData && responseTimeData.length > 0) {
+          downloadCSV(responseTimeData, `civic-connect-dept-performance-${timestamp}.csv`);
+        }
+        break;
+      case 'geographic':
+        // Export geographic data
+        if (geographicData && geographicData.length > 0) {
+          downloadCSV(geographicData, `civic-connect-geographic-data-${timestamp}.csv`);
+        }
+        break;
+      case 'predictive': {
+        // Create a structured data object for insights
+        const insightsData = [
+          { insight: 'Peak Season Forecast', description: 'Expected 25% increase in infrastructure reports during spring months. Consider staffing adjustments.' },
+          { insight: 'Resource Optimization', description: 'Downtown district shows clustering of evening reports. Recommend extending evening shift coverage.' },
+          { insight: 'Efficiency Opportunity', description: 'Automated routing could reduce response times by 15% in high-density areas.' }
+        ];
+        downloadCSV(insightsData, `civic-connect-insights-${timestamp}.csv`);
+        break;
+      }
+      default:
+        // Export all available data as a fallback
+        if (monthlyReports && monthlyReports.length > 0) {
+          downloadCSV(monthlyReports, `civic-connect-analytics-${timestamp}.csv`);
+        }
+    }
+  };
+  
+  // Handle JSON export
+  const handleExportJSON = () => {
+    const timestamp = new Date().toISOString().slice(0, 10);
+    
+    // Export current view based on active tab
+    const activeTab = document.querySelector('[aria-selected="true"][role="tab"]');
+    const tabValue = activeTab ? activeTab.getAttribute('value') : 'overview';
+    
+    switch(tabValue) {
+      case 'overview':
+        // Export monthly reports
+        if (monthlyReports && monthlyReports.length > 0) {
+          downloadJSON(monthlyReports, `civic-connect-monthly-reports-${timestamp}.json`);
+        }
+        break;
+      case 'performance':
+        // Export response time data
+        if (responseTimeData && responseTimeData.length > 0) {
+          downloadJSON(responseTimeData, `civic-connect-dept-performance-${timestamp}.json`);
+        }
+        break;
+      case 'geographic':
+        // Export geographic data
+        if (geographicData && geographicData.length > 0) {
+          downloadJSON(geographicData, `civic-connect-geographic-data-${timestamp}.json`);
+        }
+        break;
+      case 'predictive': {
+        // Create a structured data object for insights
+        const insightsData = [
+          { insight: 'Peak Season Forecast', description: 'Expected 25% increase in infrastructure reports during spring months. Consider staffing adjustments.' },
+          { insight: 'Resource Optimization', description: 'Downtown district shows clustering of evening reports. Recommend extending evening shift coverage.' },
+          { insight: 'Efficiency Opportunity', description: 'Automated routing could reduce response times by 15% in high-density areas.' }
+        ];
+        downloadJSON(insightsData, `civic-connect-insights-${timestamp}.json`);
+        break;
+      }
+      default:
+        // Export all available data as a fallback
+        if (monthlyReports && monthlyReports.length > 0) {
+          downloadJSON(monthlyReports, `civic-connect-analytics-${timestamp}.json`);
+        }
+    }
+  };
+  
   // If loading, show loading state
   if (loading) {
     return (
@@ -222,10 +314,12 @@ export const AnalyticsHub = () => {
             Refresh
           </Button>
           
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
+          <ExportButton 
+            onExportCSV={handleExportCSV}
+            onExportJSON={handleExportJSON}
+            buttonSize="sm"
+            label="Export"
+          />
         </div>
       </div>
 

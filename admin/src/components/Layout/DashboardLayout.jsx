@@ -3,9 +3,9 @@ import { cn } from '../ui/utils.js';
 import { Button } from '../ui/button.jsx';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar.jsx';
 import { Badge } from '../ui/badge.jsx';
+import { NotificationPopover } from './NotificationPopover.jsx';
 import { 
   Menu, 
-  Bell, 
   Settings, 
   ChevronLeft, 
   ChevronRight,
@@ -201,20 +201,7 @@ export const DashboardLayout = ({ children, activeTab, onTabChange, user, onLogo
             
             <div className="flex items-center gap-4 flex-shrink-0">
               {/* Notifications */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="relative"
-                aria-label="Notifications"
-              >
-                <Bell className="w-5 h-5" />
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-2 -right-2 w-5 h-5 p-0 flex items-center justify-center text-xs"
-                >
-                  3
-                </Badge>
-              </Button>
+              <NotificationPopover onViewAll={() => onTabChange('notifications')} />
               
               {/* Settings */}
               <Button 

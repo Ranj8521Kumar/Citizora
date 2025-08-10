@@ -587,6 +587,64 @@ class ApiService {
       throw error;
     }
   }
+  
+  // Get notifications for the current user
+  async getNotifications() {
+    try {
+      const response = await this.request('/notifications');
+      
+      // Ensure notifications is an array
+      if (!response.data?.notifications && Array.isArray(response.notifications)) {
+        response.data = { notifications: response.notifications };
+      } else if (!response.data?.notifications) {
+        response.data = { notifications: [] };
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      return { notifications: [] };
+    }
+  }
+  
+  // Mark a notification as read
+  async markNotificationAsRead(notificationId) {
+    try {
+      const response = await this.request(`/notifications/${notificationId}/read`, {
+        method: 'PATCH'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      throw error;
+    }
+  }
+  
+  // Mark all notifications as read
+  async markAllNotificationsAsRead() {
+    try {
+      const response = await this.request('/notifications/read-all', {
+        method: 'PATCH'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      throw error;
+    }
+  }
+
+  // Delete a notification
+  async deleteNotification(notificationId) {
+    try {
+      const response = await this.request(`/notifications/${notificationId}`, {
+        method: 'DELETE'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      throw error;
+    }
+  }
 }
 
 export default new ApiService();

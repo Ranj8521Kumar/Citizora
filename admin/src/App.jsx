@@ -6,6 +6,7 @@ import { UserManagement } from './components/Users/UserManagement.jsx';
 import { ReportManagement } from './components/Dashboard/ReportManagement.jsx';
 import { EmployeeAssignment } from './components/Dashboard/EmployeeAssignment.jsx';
 import { SystemAdministration } from './components/Dashboard/SystemAdministration.jsx';
+import { NotificationsPage } from './components/Layout/NotificationsPage.jsx';
 import { AuthModal } from './components/Auth/AuthModal.jsx';
 import { Toaster } from './components/ui/toaster.jsx';
 import { Shield } from 'lucide-react';
@@ -75,6 +76,8 @@ const App = () => {
         return <EmployeeAssignment />;
       case 'settings':
         return <SystemAdministration />;
+      case 'notifications':
+        return <NotificationsPage />;
       default:
         return <ExecutiveDashboard />;
     }

@@ -24,7 +24,9 @@ import {
   RefreshCw,
   Ban,
   UserCog,
-  Wrench
+  Wrench,
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -40,6 +42,8 @@ import { EditUserModal } from './EditUserModal.jsx';
 import { SendMessageModal } from './SendMessageModal.jsx';
 import { DeactivateUserModal } from './DeactivateUserModal.jsx';
 import { showToast } from '../../utils/toast.js';
+import { downloadCSV, downloadJSON } from '../../utils/csvExport.js';
+import { ExportButton } from '../ui/export-button.jsx';
 
 // Default role stats for loading state
 const defaultRoleStats = [
@@ -78,6 +82,266 @@ export const UserManagement = () => {
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+  
+  // Get export data from users
+  const getExportData = (users) => {
+    return users.map(user => ({
+      ID: user.id,
+      Name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      Email: user.email || '',
+      Phone: user.phone || '',
+      Role: user.role || '',
+      Status: user.status || '',
+      Department: user.department || '',
+      LastActive: user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never',
+      RegisteredOn: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'
+    }));
+  };
+  
+  // Get JSON export data
+  const getJsonExportData = (users) => {
+    return users.map(user => ({
+      id: user.id,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      email: user.email || '',
+      phone: user.phone || '',
+      role: user.role || '',
+      status: user.status || '',
+      department: user.department || '',
+      lastActive: user.lastActive || null,
+      registeredOn: user.createdAt || null
+    }));
+  };
+  
+  // Handle export of all users as CSV
+  const handleExportAllUsersCSV = () => {
+    if (!filteredUsers || filteredUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(filteredUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-all-users-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} users exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of all users as JSON
+  const handleExportAllUsersJSON = () => {
+    if (!filteredUsers || filteredUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(filteredUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-all-users-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} users exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of citizens as CSV
+  const handleExportCitizensCSV = () => {
+    const citizens = filteredUsers.filter(user => user.role === 'Citizen');
+    if (!citizens || citizens.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No citizen data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(citizens);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-citizens-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} citizens exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of citizens as JSON
+  const handleExportCitizensJSON = () => {
+    const citizens = filteredUsers.filter(user => user.role === 'Citizen');
+    if (!citizens || citizens.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No citizen data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(citizens);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-citizens-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} citizens exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of staff as CSV
+  const handleExportStaffCSV = () => {
+    const staff = filteredUsers.filter(user => user.role === 'Administrator' || user.role === 'Field Worker');
+    if (!staff || staff.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No staff data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(staff);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-staff-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} staff members exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of staff as JSON
+  const handleExportStaffJSON = () => {
+    const staff = filteredUsers.filter(user => user.role === 'Administrator' || user.role === 'Field Worker');
+    if (!staff || staff.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No staff data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(staff);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-staff-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} staff members exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of inactive users as CSV
+  const handleExportInactiveUsersCSV = () => {
+    const inactiveUsers = filteredUsers.filter(user => user.status === 'Inactive');
+    if (!inactiveUsers || inactiveUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No inactive user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(inactiveUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-inactive-users-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} inactive users exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of inactive users as JSON
+  const handleExportInactiveUsersJSON = () => {
+    const inactiveUsers = filteredUsers.filter(user => user.status === 'Inactive');
+    if (!inactiveUsers || inactiveUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No inactive user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(inactiveUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-inactive-users-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} inactive users exported as JSON`,
+      type: 'success'
+    });
+  };
   
   // Handle deactivate user confirmation
   const handleDeleteUser = async (userId) => {
@@ -557,10 +821,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportAllUsersCSV}
+                    onExportJSON={handleExportAllUsersJSON}
+                    buttonSize="sm"
+                    label="Export Users"
+                  />
                   <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add User
@@ -829,10 +1095,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportCitizensCSV}
+                    onExportJSON={handleExportCitizensJSON}
+                    buttonSize="sm"
+                    label="Export Citizens"
+                  />
                   <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add Citizen
@@ -1051,10 +1319,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportStaffCSV}
+                    onExportJSON={handleExportStaffJSON}
+                    buttonSize="sm"
+                    label="Export Staff"
+                  />
                   <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add Staff
@@ -1298,10 +1568,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportInactiveUsersCSV}
+                    onExportJSON={handleExportInactiveUsersJSON}
+                    buttonSize="sm"
+                    label="Export Inactive"
+                  />
                   <Button variant="outline" size="sm" onClick={() => handleRefresh()}>
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Refresh

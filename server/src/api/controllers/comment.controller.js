@@ -24,9 +24,25 @@ exports.addReportComment = async (req, res, next) => {
       return next(new ApiError('Report not found', 404));
     }
 
-    // Add comment to the report timeline
-    // Note: addTimelineEvent expects (status, comment, userId)
-    const timelineEvent = await report.addTimelineEvent('comment', text, req.user._id);
+    // Instead of using addTimelineEvent, we'll manually add a comment to the timeline
+    // because 'comment' is not a valid status enum value
+    
+    // Keep the original status
+    const currentStatus = report.status;
+    
+    // Add to timeline directly
+    report.timeline.push({
+      status: currentStatus, // Use the current report status
+      comment: text,         // The comment text
+      updatedBy: req.user._id,
+      timestamp: new Date()
+    });
+    
+    // Save the report
+    await report.save();
+    
+    // Get the newly created timeline event (the last one in the array)
+    const timelineEvent = report.timeline[report.timeline.length - 1];
     
     // If the report is assigned to someone, notify them about the new comment
     if (report.assignedTo && report.assignedTo._id.toString() !== req.user._id.toString()) {
@@ -102,18 +118,18 @@ exports.getReportComments = async (req, res, next) => {
       return next(new ApiError('Report not found', 404));
     }
 
-    // Filter timeline events to only include comments
+    // Filter timeline events to only include entries with comments (not empty)
     const comments = report.timeline
-      .filter(event => event.type === 'comment')
+      .filter(event => event.comment && event.comment.trim() !== '')
       .map(event => ({
         _id: event._id,
-        text: event.description,
+        text: event.comment,
         createdAt: event.timestamp,
-        user: event.user ? {
-          _id: event.user._id,
-          firstName: event.user.firstName,
-          lastName: event.user.lastName,
-          role: event.user.role
+        user: event.updatedBy ? {
+          _id: event.updatedBy._id,
+          firstName: event.updatedBy.firstName,
+          lastName: event.updatedBy.lastName,
+          role: event.updatedBy.role
         } : {
           _id: 'system',
           firstName: 'System',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -19,38 +19,133 @@ import {
   Eye,
   Calendar
 } from 'lucide-react';
+import { DebugReportsAnalyzer } from '../utils/DebugReportsAnalyzer';
 
-export function Dashboard({ user, reports, onNavigate }) {
+export function Dashboard({ user, reports, onNavigate, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReport, setSelectedReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  // Debug reports data
+  useEffect(() => {
+    console.log('Reports data in Dashboard:', reports);
+    
+    // Check the specific structure of reports
+    if (Array.isArray(reports)) {
+      console.log(`Dashboard received ${reports.length} reports`);
+      if (reports.length > 0) {
+        console.log('First report sample:', reports[0]);
+        // Log image structure explicitly if available
+        if (reports[0].images) {
+          console.log('Images structure:', JSON.stringify(reports[0].images, null, 2));
+        }
+        
+        // Always select first report on load if none is selected
+        if (!selectedReport) {
+          try {
+            // Ensure the report object is safe to use as state
+            const safeReport = { ...reports[0] };
+            
+            // Handle potential problematic fields that might be objects
+            if (safeReport.location && typeof safeReport.location === 'object') {
+              if (typeof safeReport.location.toString !== 'function') {
+                safeReport.location = JSON.stringify(safeReport.location);
+              }
+            }
+            
+            setSelectedReport(safeReport);
+            console.log('Auto-selected first report:', safeReport);
+          } catch (err) {
+            console.error('Error selecting report:', err);
+          }
+        }
+      }
+    } else if (reports && typeof reports === 'object') {
+      console.log('Reports is not an array but an object with keys:', Object.keys(reports));
+    } else {
+      console.log('Reports is neither an array nor an object');
+    }
+  }, [reports, selectedReport]);
 
-  const filteredReports = reports.filter(report => {
-    const matchesSearch = (report.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (report.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  // Normalize report statuses for consistent handling
+  // Normalize report statuses for consistent handling
+  const normalizedReports = Array.isArray(reports) ? reports.map(report => {
+    // Skip if report is null or undefined
+    if (!report) return { status: 'unknown' };
+    
+    // Create a copy of the report with normalized status
+    const normalizedReport = { ...report };
+    
+    try {
+      // Normalize status (convert underscores to hyphens and lowercase)
+      const originalStatus = report.status || '';
+      normalizedReport.originalStatus = originalStatus; // keep original for reference
+      normalizedReport.status = originalStatus.toString().replace(/_/g, '-').toLowerCase();
+      
+      // Handle special cases
+      if (normalizedReport.status === 'in-progress' || normalizedReport.status === 'inprogress') {
+        normalizedReport.status = 'in-progress';
+      } else if (normalizedReport.status === 'completed') {
+        normalizedReport.status = 'resolved';
+      } else if (['pending', 'assigned', ''].includes(normalizedReport.status)) {
+        normalizedReport.status = 'submitted';
+      }
+      
+      // Ensure other required fields exist
+      if (!normalizedReport.title) normalizedReport.title = 'Untitled Report';
+      if (!normalizedReport.description) normalizedReport.description = 'No description provided';
+    } catch (err) {
+      console.error('Error normalizing report:', err, report);
+      normalizedReport.status = 'unknown';
+    }
+    
+    return normalizedReport;
+  }) : [];
+
+  const filteredReports = normalizedReports.filter(report => {
+    // Skip invalid reports
+    if (!report || !report.status) {
+      console.warn('Skipping invalid report:', report);
+      return false;
+    }
+    
+    try {
+      // Perform search and status filtering
+      const matchesSearch = 
+        ((report.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (report.description || '').toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      // Use already normalized status
+      const matchesStatus = 
+        statusFilter === 'all' || 
+        report.status === statusFilter.replace('_', '-').toLowerCase();
+      
+      return matchesSearch && matchesStatus;
+    } catch (err) {
+      console.error('Error filtering report:', err, report);
+      return false;
+    }
   });
-
+  
+  // Calculate report stats with normalized status values
   const stats = {
-    total: reports.length,
-    submitted: reports.filter(r => r.status === 'submitted').length,
-    inProgress: reports.filter(r => r.status === 'in-progress').length,
-    resolved: reports.filter(r => r.status === 'resolved').length,
+    total: normalizedReports.length,
+    submitted: normalizedReports.filter(r => r.status === 'submitted').length,
+    inProgress: normalizedReports.filter(r => r.status === 'in-progress').length,
+    resolved: normalizedReports.filter(r => r.status === 'resolved').length,
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'resolved':
-        return 'bg-secondary text-secondary-foreground';
-      case 'in-progress':
-        return 'bg-orange-500 text-white';
       case 'submitted':
-        return 'bg-blue-500 text-white';
-      case 'closed':
-        return 'bg-muted text-muted-foreground';
+        return 'bg-blue-100 text-blue-800';
+      case 'in-progress':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'resolved':
+        return 'bg-green-100 text-green-800';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -112,6 +207,70 @@ export function Dashboard({ user, reports, onNavigate }) {
     }
   };
 
+  // Extract and normalize image URL from different API response formats
+  const getImageUrl = (report) => {
+    // Handle different image formats based on API response structure
+    try {
+      if (!report) return null;
+      
+      // Check for images array with URLs
+      if (report.images && Array.isArray(report.images) && report.images.length > 0) {
+        console.log('Getting URL from images array', report.images);
+        // Get first image that has a valid URL
+        const image = report.images.find(img => 
+          img && (typeof img === 'string' || img.url || img.path || img.src || img._id || img.filename));
+        
+        if (image) {
+          // If image is a string, it's a direct URL
+          if (typeof image === 'string') return image;
+          
+          // Build URL based on backend structure
+          if (image._id || image.filename) {
+            // If we have an ID, construct the image URL using the backend URL pattern
+            const imageId = image._id || image.filename;
+            return `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
+          }
+          
+          // Check for various properties that might contain the URL
+          return image.url || image.path || image.src;
+        }
+      }
+      
+      // Check for photo or photoUrl property
+      if (report.photoUrl) return report.photoUrl;
+      if (report.photo) {
+        // Handle photo being an object or string
+        if (typeof report.photo === 'string') return report.photo;
+        if (report.photo.url) return report.photo.url;
+        if (report.photo._id) return report.photo._id; // Try _id if url doesn't exist
+      }
+      
+      // Check for imageUrl property
+      if (report.imageUrl) return report.imageUrl;
+      
+      // Check for image property
+      if (report.image) {
+        // Handle image being an object or string
+        if (typeof report.image === 'string') return report.image;
+        if (report.image.url) return report.image.url;
+        if (report.image._id) return report.image._id; // Try _id if url doesn't exist
+      }
+      
+      // Check for attachments
+      if (report.attachments && Array.isArray(report.attachments) && report.attachments.length > 0) {
+        const attachment = report.attachments[0];
+        if (typeof attachment === 'string') return attachment;
+        if (attachment.url) return attachment.url;
+      }
+      
+      // No valid image found
+      return null;
+    } catch (err) {
+      console.error('Error getting image URL:', err, report);
+      return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/30 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -120,14 +279,33 @@ export function Dashboard({ user, reports, onNavigate }) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, {user.firstName || user.name || 'User'}</p>
+              <p className="text-muted-foreground">
+                Welcome back, {user?.firstName || user?.name || 'User'}
+              </p>
             </div>
-            <Button onClick={() => onNavigate('report')} className="flex items-center space-x-2">
-              <Plus className="w-4 h-4" />
-              <span>New Report</span>
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setLoading(true);
+                  onRefresh().finally(() => setLoading(false));
+                }} 
+                className="flex items-center space-x-2"
+                disabled={loading}
+              >
+                <Eye className="w-4 h-4" />
+                <span>{loading ? 'Loading...' : 'Refresh'}</span>
+              </Button>
+              <Button onClick={() => onNavigate('report')} className="flex items-center space-x-2">
+                <Plus className="w-4 h-4" />
+                <span>New Report</span>
+              </Button>
+
+            </div>
           </div>
         </div>
+        
+
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -238,7 +416,7 @@ export function Dashboard({ user, reports, onNavigate }) {
                       const StatusIcon = getStatusIcon(report.status);
                       return (
                         <div 
-                          key={report._id || report.id || Math.random()} 
+                          key={report._id || report.id || Math.random().toString()} 
                           className="p-6 hover:bg-muted/50 cursor-pointer transition-colors"
                           onClick={() => setSelectedReport(report)}
                         >
@@ -249,9 +427,11 @@ export function Dashboard({ user, reports, onNavigate }) {
                                   <StatusIcon className="w-3 h-3 mr-1" />
                                   {(report.status || 'submitted').replace('-', ' ')}
                                 </Badge>
-                                <Badge variant="outline" className={getPriorityColor(report.priority)}>
-                                  {report.priority || 'medium'}
-                                </Badge>
+                                {report.priority && (
+                                  <Badge variant="outline" className={getPriorityColor(report.priority)}>
+                                    {report.priority}
+                                  </Badge>
+                                )}
                               </div>
                               
                               <h3 className="font-medium mb-1">{report.title || 'Untitled Report'}</h3>
@@ -262,16 +442,24 @@ export function Dashboard({ user, reports, onNavigate }) {
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
-                                  {report.location?.address?.description || report.location?.description || 'Location not specified'}
+                                  {report.location?.address?.description || 
+                                   report.location?.description || 
+                                   (typeof report.location === 'string' ? report.location : 
+                                    report.location?.address ? 
+                                      (typeof report.location.address === 'string' ? 
+                                        report.location.address : 'Location available') :
+                                      'Location not specified')}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
-                                  {formatDate(report.createdAt)}
+                                  {formatDate(report.createdAt || report.date)}
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <TrendingUp className="w-3 h-3" />
-                                  {(report.votes || 0)} votes
-                                </div>
+                                {typeof report.votes === 'number' && (
+                                  <div className="flex items-center gap-1">
+                                    <TrendingUp className="w-3 h-3" />
+                                    {report.votes} votes
+                                  </div>
+                                )}
                               </div>
                             </div>
                             
@@ -310,26 +498,39 @@ export function Dashboard({ user, reports, onNavigate }) {
                     <Badge className={getStatusColor(selectedReport.status)}>
                       {(selectedReport.status || 'submitted').replace('-', ' ')}
                     </Badge>
-                    <Badge variant="outline" className={getPriorityColor(selectedReport.priority)}>
-                      {selectedReport.priority || 'medium'}
-                    </Badge>
+                    {selectedReport.priority && (
+                      <Badge variant="outline" className={getPriorityColor(selectedReport.priority)}>
+                        {selectedReport.priority}
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedReport.location?.address?.description || selectedReport.location?.description || 'Location not specified'}</span>
+                      <span>
+                        {selectedReport.location?.address?.description || 
+                         selectedReport.location?.description || 
+                         (typeof selectedReport.location === 'string' ? selectedReport.location : 
+                          selectedReport.location?.address ? 
+                            (typeof selectedReport.location.address === 'string' ? 
+                              selectedReport.location.address : 
+                              JSON.stringify(selectedReport.location.address).substring(0, 30) + '...') : 
+                            'Location not specified')}
+                      </span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <span>Submitted {formatDateTime(selectedReport.createdAt)}</span>
+                      <span>Submitted {formatDateTime(selectedReport.createdAt || selectedReport.date)}</span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm">
-                      <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                      <span>{(selectedReport.votes || 0)} community votes</span>
-                    </div>
+                    {typeof selectedReport.votes === 'number' && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                        <span>{selectedReport.votes} community votes</span>
+                      </div>
+                    )}
                     
                     {selectedReport.estimatedResolution && (
                       <div className="flex items-center gap-2 text-sm">
@@ -339,19 +540,84 @@ export function Dashboard({ user, reports, onNavigate }) {
                     )}
                   </div>
                   
+                  {/* Photos section - enhanced with error handling and debugging */}
                   {(selectedReport.images && selectedReport.images.length > 0) && (
                     <div>
-                      <h4 className="font-medium mb-2">Photos</h4>
+                      <h4 className="font-medium mb-2">
+                        Photos ({selectedReport.images.length})
+                      </h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {selectedReport.images.map((image, index) => (
-                          <img
-                            key={index}
-                            src={typeof image === 'string' ? image : image.url}
-                            alt={`Report image ${index + 1}`}
-                            className="w-full h-20 object-cover rounded border"
-                          />
-                        ))}
+                        {selectedReport.images.map((image, index) => {
+                          console.log(`Rendering image ${index}:`, image);
+                          let imageUrl = '';
+                          
+                          // Handle different image formats
+                          if (typeof image === 'string') {
+                            imageUrl = image;
+                            console.log(`- String image: ${imageUrl}`);
+                          } else if (image && typeof image === 'object') {
+                            // Check for various url properties the backend might return
+                            if (image._id || image.filename) {
+                              // If we have an ID, construct the image URL using the backend URL pattern
+                              const imageId = image._id || image.filename;
+                              imageUrl = `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
+                              console.log(`- Constructed image URL from ID: ${imageUrl}`);
+                            } else {
+                              // Try to get URL from standard properties
+                              imageUrl = image.url || image.path || image.src || 
+                                (image.secure_url || image.secureUrl) || 
+                                (image.urls && (image.urls.regular || image.urls.small || image.urls.thumb));
+                              console.log(`- Object image standard URL: ${imageUrl || 'No URL found in object'}`);
+                            }
+                            
+                            if (!imageUrl) {
+                              console.log('  Image object keys:', Object.keys(image));
+                            }
+                          }
+                          
+                          return (
+                            <div key={index} className="relative">
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={`Report image ${index + 1}`}
+                                  className="w-full h-20 object-cover rounded border"
+                                  onError={(e) => {
+                                    console.error('Failed to load image:', imageUrl);
+                                    e.target.src = 'https://placehold.co/400x300?text=Image+Not+Found';
+                                  }}
+                                  onClick={() => window.open(imageUrl, '_blank')}
+                                />
+                              ) : (
+                                <div className="w-full h-20 bg-gray-100 flex items-center justify-center rounded border">
+                                  <span className="text-xs text-gray-500">Invalid image</span>
+                                </div>
+                              )}
+                              {(image.uploadedAt || image.timestamp) && (
+                                <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1 rounded-tl">
+                                  {formatDate(image.uploadedAt || image.timestamp)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
+                    </div>
+                  )}
+                  
+                  {/* Check for the main image if no images array exists */}
+                  {!selectedReport.images && getImageUrl(selectedReport) && (
+                    <div>
+                      <h4 className="font-medium mb-2">Photo</h4>
+                      <img
+                        src={getImageUrl(selectedReport)}
+                        alt="Report image"
+                        className="w-full h-auto object-cover rounded border"
+                        onError={(e) => {
+                          console.error('Failed to load image:', getImageUrl(selectedReport));
+                          e.target.src = 'https://placehold.co/400x300?text=Image+Not+Found';
+                        }}
+                      />
                     </div>
                   )}
                   
@@ -361,14 +627,14 @@ export function Dashboard({ user, reports, onNavigate }) {
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-primary rounded-full"></div>
                         <span className="text-muted-foreground">
-                          Submitted on {formatDate(selectedReport.createdAt)}
+                          Submitted on {formatDate(selectedReport.createdAt || selectedReport.date)}
                         </span>
                       </div>
-                      {selectedReport.status !== 'submitted' && selectedReport.updatedAt && (
+                      {selectedReport.status !== 'submitted' && (selectedReport.updatedAt || selectedReport.lastUpdated) && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-accent rounded-full"></div>
                           <span className="text-muted-foreground">
-                            Updated on {formatDate(selectedReport.updatedAt)}
+                            Updated on {formatDate(selectedReport.updatedAt || selectedReport.lastUpdated)}
                           </span>
                         </div>
                       )}

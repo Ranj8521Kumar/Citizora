@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { ReportForm } from './components/ReportForm';
@@ -17,7 +17,6 @@ export default function App() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   // Check for existing token on app load
   useEffect(() => {
     const initializeApp = async () => {
@@ -39,33 +38,87 @@ export default function App() {
     initializeApp();
   }, []);
 
-  // Load reports when user is authenticated
-  useEffect(() => {
-    if (user) {
-      loadReports();
-    }
-  }, [user]);
-
-  const loadReports = async () => {
+  // Define loadReports with useCallback
+  const loadReports = useCallback(async () => {
     try {
-      const reportsData = await apiService.getReports();
-      // Ensure reportsData is an array
-      setReports(Array.isArray(reportsData) ? reportsData : []);
+      setError(null); // Clear any previous errors
+      console.log('Loading reports for user:', user);
+      
+      // Get data from API
+      try {
+        // Forcing load screen 
+        setLoading(true);
+        const reportsData = await apiService.getReports();
+        console.log('Reports data received from API:', reportsData);
+        
+        // Process the reports data
+        let processedReports = [];
+        
+        // Handle different data structures
+        if (Array.isArray(reportsData)) {
+          // Direct array of reports
+          processedReports = reportsData;
+        } else if (typeof reportsData === 'object') {
+          // Could be an object with a reports array or data property
+          if (reportsData.data) {
+            if (Array.isArray(reportsData.data)) {
+              processedReports = reportsData.data;
+            } else if (typeof reportsData.data === 'object') {
+              // It might be a single report or have a nested structure
+              processedReports = [reportsData.data];
+            }
+          } else if (reportsData.reports && Array.isArray(reportsData.reports)) {
+            processedReports = reportsData.reports;
+          } else {
+            // If no recognizable structure, treat the object itself as a single report
+            processedReports = [reportsData];
+          }
+        }
+        
+        // Ensure all reports are complete objects with at least a status field
+        processedReports = processedReports
+          .filter(report => report && typeof report === 'object')
+          .map(report => {
+            const updatedReport = { ...report };
+            // Set default values for missing fields to prevent UI errors
+            if (!updatedReport.status) updatedReport.status = 'submitted'; // Default status
+            if (!updatedReport.title) updatedReport.title = 'Untitled Report';
+            if (!updatedReport.description) updatedReport.description = 'No description provided';
+            if (!updatedReport.createdAt) updatedReport.createdAt = new Date().toISOString();
+            return updatedReport;
+          });
+        
+        console.log('Reports data for Dashboard:', processedReports);
+        setReports(processedReports);
+      } catch (error) {
+        console.error('Failed to fetch reports from API:', error);
+        setError('Failed to load reports. Please try again later.');
+        setReports([]);
+      } finally {
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Failed to load reports:', error);
       setError('Failed to load reports');
       // Set empty array on error to prevent filter issues
       setReports([]);
     }
-  };
+  }, [user]); // Include only user as dependency
+  
+  // Load reports when user is authenticated
+  useEffect(() => {
+    console.log('Load reports effect triggered', { user });
+    // Always load reports on component mount, even without user for public reports
+    loadReports();
+  }, [loadReports, user]);
 
-  const handleLogin = (userData, token) => {
+  const handleLogin = (userData) => {
     setUser(userData.user || userData);
     setShowAuthModal(false);
     setCurrentPage('dashboard');
   };
 
-  const handleRegister = (userData, token) => {
+  const handleRegister = (userData) => {
     setUser(userData.user || userData);
     setShowAuthModal(false);
     setCurrentPage('dashboard');
@@ -129,6 +182,8 @@ export default function App() {
             </button>
           </div>
         )}
+        
+
 
         {currentPage === 'landing' && (
           <LandingPage 
@@ -142,8 +197,9 @@ export default function App() {
         {currentPage === 'dashboard' && user && (
           <Dashboard 
             user={user}
-            reports={reports.filter(r => r.submittedBy?._id === user._id || r.submittedBy === user._id)}
+            reports={reports}
             onNavigate={setCurrentPage}
+            onRefresh={loadReports}
           />
         )}
         

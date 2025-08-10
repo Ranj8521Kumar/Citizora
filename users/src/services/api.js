@@ -1,9 +1,37 @@
-const API_BASE_URL = 'https://civic-connect-backend-aq2a.onrender.com/api';
+// Primary API endpoint
+const REMOTE_API_URL = 'https://civic-connect-backend-aq2a.onrender.com/api';
+// Fallback to local API for development
+const LOCAL_API_URL = 'http://localhost:3000/api';
 
 class ApiService {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    // Start with remote URL, will fall back to local if needed
+    this.baseURL = REMOTE_API_URL;
     this.token = localStorage.getItem('token');
+    
+    // Check server connectivity and switch to local if needed
+    this.checkServerConnection();
+  }
+  
+  async checkServerConnection() {
+    try {
+      console.log('🔄 Testing connection to:', this.baseURL);
+      const healthUrl = this.baseURL.replace('/api', '/health');
+      const response = await fetch(healthUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+      
+      console.log('✅ Connected to remote server');
+    } catch (error) {
+      console.warn('⚠️ Remote server connection failed, switching to local:', error.message);
+      this.baseURL = LOCAL_API_URL;
+      console.log('🔄 Using local API URL:', this.baseURL);
+    }
   }
 
   // Set auth token
@@ -24,8 +52,12 @@ class ApiService {
       'Content-Type': 'application/json',
     };
     
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    // Get fresh token from localStorage in case it was updated elsewhere
+    const token = localStorage.getItem('token') || this.token;
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      this.token = token; // Keep instance token updated
     }
     
     return headers;
@@ -39,17 +71,27 @@ class ApiService {
       ...options,
     };
 
+    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+    console.log('🔑 Headers:', config.headers);
+    if (options.body) {
+      console.log('📦 Request Body:', options.body);
+    }
+
     try {
       const response = await fetch(url, config);
+      console.log(`📡 Response Status:`, response.status, response.statusText);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('🚫 API Error:', errorData);
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log(`✅ Response Data:`, data);
+      return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('❌ API request failed:', error);
       throw error;
     }
   }
@@ -96,12 +138,46 @@ class ApiService {
 
   // Report methods
   async getReports(filters = {}) {
-    const queryParams = new URLSearchParams(filters).toString();
-    const endpoint = queryParams ? `/reports?${queryParams}` : '/reports';
-    const response = await this.request(endpoint);
-    
-    // Extract reports array from response data
-    return response.data?.reports || [];
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const endpoint = queryParams ? `/reports?${queryParams}` : '/reports';
+      
+      const response = await this.request(endpoint);
+      
+      console.log('API getReports response:', response);
+      
+      // Handle different response structures
+      let reports = [];
+      
+      if (Array.isArray(response)) {
+        reports = response;
+      } else if (response.data) {
+        // Check if data is an array or contains reports array
+        if (Array.isArray(response.data)) {
+          reports = response.data;
+        } else if (Array.isArray(response.data.reports)) {
+          reports = response.data.reports;
+        } else if (typeof response.data === 'object') {
+          // Sometimes data might be the reports array directly
+          reports = [response.data];
+        }
+      } else if (response.reports && Array.isArray(response.reports)) {
+        reports = response.reports;
+      }
+      
+      // In the specific API format shown in the logs
+      if (reports.length === 0 && response.count > 0 && response.data) {
+        console.log("Found reports in the API response data property");
+        reports = response.data;
+      }
+      
+      console.log('Extracted reports:', reports);
+      return reports;
+    } catch (error) {
+      console.error('Failed to fetch reports from API:', error.message);
+      // Return empty array on error instead of mock data
+      return [];
+    }
   }
 
   async getReportById(id) {

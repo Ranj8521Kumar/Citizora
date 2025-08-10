@@ -1,6 +1,6 @@
 const Report = require('../models/report.model');
 const User = require('../models/user.model');
-const ApiError = require('../utils/ApiError');
+const { ApiError } = require('../middleware/error.middleware');
 const Notification = require('../models/notification.model');
 
 /**
@@ -25,6 +25,7 @@ exports.addReportComment = async (req, res, next) => {
     }
 
     // Add comment to the report timeline
+    // Note: addTimelineEvent expects (status, comment, userId)
     const timelineEvent = await report.addTimelineEvent('comment', text, req.user._id);
     
     // If the report is assigned to someone, notify them about the new comment

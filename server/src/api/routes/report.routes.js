@@ -105,4 +105,19 @@ router.patch('/:id', restrictTo('admin'), async (req, res, next) => {
   }
 });
 
+/**
+ * @route DELETE /api/reports/:id
+ * @desc Delete a report (soft delete by changing status to closed)
+ * @access Private (admin only)
+ */
+router.delete('/:id', restrictTo('admin'), async (req, res, next) => {
+  try {
+    // Import the deleteReport controller
+    const { deleteReport } = require('../controllers/deleteReport');
+    return await deleteReport(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

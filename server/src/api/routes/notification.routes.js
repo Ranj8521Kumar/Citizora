@@ -139,4 +139,41 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
+/**
+ * @route PATCH /api/notifications/read-all
+ * @desc Mark all notifications as read
+ * @access Private
+ */
+router.patch('/read-all', async (req, res) => {
+  try {
+    // Find all unread notifications for the user
+    const notifications = await Notification.find({
+      recipient: req.user._id,
+      isRead: false
+    });
+
+    // Mark each notification as read
+    for (const notification of notifications) {
+      notification.isRead = true;
+      notification.readAt = new Date();
+      await notification.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Marked ${notifications.length} notifications as read`,
+      count: notifications.length
+    });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark all notifications as read',
+      error: {
+        message: error.message
+      }
+    });
+  }
+});
+
 module.exports = router;

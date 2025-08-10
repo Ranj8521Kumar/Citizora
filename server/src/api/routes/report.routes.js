@@ -63,6 +63,34 @@ router.post('/:id/feedback', reportController.addFeedback);
 router.post('/:id/images', upload.array('images', 5), reportController.uploadReportImages);
 
 /**
+ * @route POST /api/reports/:id/comments
+ * @desc Add a comment to a report
+ * @access Private - Any authenticated user
+ */
+router.post('/:id/comments', async (req, res, next) => {
+  try {
+    const commentController = require('../controllers/comment.controller');
+    return await commentController.addReportComment(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route GET /api/reports/:id/comments
+ * @desc Get all comments for a report
+ * @access Private - Any authenticated user
+ */
+router.get('/:id/comments', async (req, res, next) => {
+  try {
+    const commentController = require('../controllers/comment.controller');
+    return await commentController.getReportComments(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route PATCH /api/reports/:id
  * @desc Update a report (full update)
  * @access Private (admin only)

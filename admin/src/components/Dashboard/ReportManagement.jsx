@@ -40,8 +40,6 @@ import { ReportDetailModal } from './ReportDetailModal.jsx';
 import { EditReportModal } from './EditReportModal.jsx';
 import { AssignReportModal } from './AssignReportModal.jsx';
 import { CommentModal } from './CommentModal.jsx';
-import { downloadCSV, downloadJSON } from '../../utils/csvExport.js';
-import { ExportButton } from '../ui/export-button.jsx';
 
 // Default priority badge variants
 const getPriorityVariant = (priority) => {
@@ -519,90 +517,6 @@ export const ReportManagement = () => {
     });
   };
   
-  // Export report data as CSV
-  const handleExportCSV = () => {
-    if (!filteredReports || filteredReports.length === 0) {
-      toast({
-        title: 'Export Failed',
-        description: 'No report data available to export',
-        variant: 'error',
-      });
-      return;
-    }
-    
-    // Format data for export
-    const exportData = filteredReports.map(report => ({
-      ID: report._id,
-      Title: report.title || '',
-      Description: report.description || '',
-      Status: formatStatusForDisplay(report.status) || '',
-      Priority: report.priority || '',
-      Category: report.category || '',
-      SubmittedDate: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : '',
-      Location: report.location?.address ? 
-        `${report.location.address.street || ''}, ${report.location.address.city || ''}, ${report.location.address.state || ''}`.trim() : '',
-      AssignedTo: report.assignedTo ? 
-        `${report.assignedTo.firstName || ''} ${report.assignedTo.lastName || ''}`.trim() : 'Unassigned',
-      UpdatedDate: report.updatedAt ? new Date(report.updatedAt).toLocaleDateString() : '',
-    }));
-    
-    // Generate timestamp for filename
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const tabLabel = activeTab === 'all-reports' ? 'all' : activeTab;
-    const filename = `civic-connect-reports-${tabLabel}-${timestamp}.csv`;
-    
-    // Download the CSV file
-    downloadCSV(exportData, filename);
-    
-    toast({
-      title: 'Export Successful',
-      description: `${exportData.length} reports exported as CSV`,
-      variant: 'success',
-    });
-  };
-  
-  // Export report data as JSON
-  const handleExportJSON = () => {
-    if (!filteredReports || filteredReports.length === 0) {
-      toast({
-        title: 'Export Failed',
-        description: 'No report data available to export',
-        variant: 'error',
-      });
-      return;
-    }
-    
-    // Format data for export - more complete for JSON
-    const exportData = filteredReports.map(report => ({
-      id: report._id,
-      title: report.title || '',
-      description: report.description || '',
-      status: report.status || '',
-      priority: report.priority || '',
-      category: report.category || '',
-      submittedDate: report.createdAt || '',
-      location: report.location || {},
-      assignedTo: report.assignedTo || null,
-      updatedDate: report.updatedAt || '',
-      images: report.images || [],
-      comments: report.comments || []
-    }));
-    
-    // Generate timestamp for filename
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const tabLabel = activeTab === 'all-reports' ? 'all' : activeTab;
-    const filename = `civic-connect-reports-${tabLabel}-${timestamp}.json`;
-    
-    // Download the JSON file
-    downloadJSON(exportData, filename);
-    
-    toast({
-      title: 'Export Successful',
-      description: `${exportData.length} reports exported as JSON`,
-      variant: 'success',
-    });
-  };
-  
   // Handle sort change
   const handleSort = (field) => {
     if (sortField === field) {
@@ -744,12 +658,10 @@ export const ReportManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <ExportButton
-                    onExportCSV={handleExportCSV}
-                    onExportJSON={handleExportJSON}
-                    buttonSize="sm"
-                    label="Export Reports"
-                  />
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
                   <Button 
                     size="sm" 
                     variant="default" 

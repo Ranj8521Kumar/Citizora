@@ -124,6 +124,66 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
       default: return 'secondary';
     }
   };
+  
+  // Function to handle navigation to the report location
+  const handleNavigate = () => {
+    let locationString;
+    let coordinates;
+    
+    // Get location information from the report
+    if (typeof report.location === 'string') {
+      locationString = report.location;
+    } else if (report.location && typeof report.location === 'object') {
+      // Check if we have coordinates
+      if (report.location.coordinates && 
+          Array.isArray(report.location.coordinates) && 
+          report.location.coordinates.length >= 2) {
+        coordinates = report.location.coordinates;
+      }
+      
+      // Get formatted address
+      if (report.location.address && typeof report.location.address === 'string') {
+        locationString = report.location.address;
+      } else if (report.location.address && typeof report.location.address === 'object') {
+        const addr = report.location.address;
+        const parts = [];
+        if (addr.street) parts.push(addr.street);
+        if (addr.city) parts.push(addr.city);
+        if (addr.state) parts.push(addr.state);
+        if (addr.zipCode) parts.push(addr.zipCode);
+        locationString = parts.join(', ');
+      } else if (report.location.street) {
+        // Direct properties on location object
+        const parts = [];
+        if (report.location.street) parts.push(report.location.street);
+        if (report.location.city) parts.push(report.location.city);
+        if (report.location.state) parts.push(report.location.state);
+        if (report.location.zipCode) parts.push(report.location.zipCode);
+        locationString = parts.join(', ');
+      } else {
+        locationString = "Unknown location";
+      }
+    }
+    
+    // Open map application based on platform
+    try {
+      // Format the location for the URL
+      const locationQuery = encodeURIComponent(locationString || 'Unknown location');
+      
+      // If we have coordinates, use them first as they're more precise
+      if (coordinates) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${coordinates[1]},${coordinates[0]}`, '_blank');
+      } else if (locationString && locationString !== 'Unknown location') {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${locationQuery}`, '_blank');
+      } else {
+        // If no valid location, show an alert
+        alert('No valid location information available for navigation.');
+      }
+    } catch (error) {
+      console.error('Error opening maps:', error);
+      alert('Could not open maps application. Please try again.');
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -292,7 +352,11 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
                 Take Photo
               </Button>
               
-              <Button variant="outline" className="gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={handleNavigate}
+              >
                 <MapPin className="w-4 h-4" />
                 Navigate
               </Button>

@@ -48,7 +48,7 @@ exports.addReportComment = async (req, res, next) => {
     if (report.assignedTo && report.assignedTo._id.toString() !== req.user._id.toString()) {
       await Notification.createNotification({
         recipient: report.assignedTo._id,
-        type: 'comment',
+        type: 'message', // Using 'message' instead of 'comment' as it's a valid enum value
         title: 'New Comment on Report',
         message: `${req.user.firstName} ${req.user.lastName} commented on a report: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
         relatedTo: {
@@ -63,7 +63,7 @@ exports.addReportComment = async (req, res, next) => {
     if (report.submittedBy && report.submittedBy._id.toString() !== req.user._id.toString()) {
       await Notification.createNotification({
         recipient: report.submittedBy._id,
-        type: 'comment',
+        type: 'message', // Using 'message' instead of 'comment' as it's a valid enum value
         title: 'New Comment on Your Report',
         message: `${req.user.firstName} ${req.user.lastName} commented on your report: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`,
         relatedTo: {

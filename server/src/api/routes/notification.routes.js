@@ -176,4 +176,44 @@ router.patch('/read-all', async (req, res) => {
   }
 });
 
+/**
+ * @route DELETE /api/notifications/:id
+ * @desc Delete a notification
+ * @access Private
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      recipient: req.user._id
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+
+    await Notification.deleteOne({ _id: req.params.id });
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification deleted successfully',
+      data: {
+        deletedNotificationId: req.params.id
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete notification',
+      error: {
+        message: error.message
+      }
+    });
+  }
+});
+
 module.exports = router;

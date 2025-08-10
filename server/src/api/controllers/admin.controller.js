@@ -377,7 +377,8 @@ exports.getAllUsers = async (req, res, next) => {
       isActive,
       search,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      includeWorkloadStats = false
     } = req.query;
 
     // Build query object
@@ -417,6 +418,55 @@ exports.getAllUsers = async (req, res, next) => {
     const totalPages = Math.ceil(totalUsers / parseInt(limit));
     const hasNextPage = parseInt(page) < totalPages;
     const hasPrevPage = parseInt(page) > 1;
+    
+    // If we need workload statistics for field workers
+    if (includeWorkloadStats === 'true' && users.length > 0) {
+      const Report = require('../models/report.model');
+      
+      // Get all user IDs
+      const userIds = users.map(user => user._id);
+      
+      // Fetch reports assigned to these users
+      const reportStats = await Report.aggregate([
+        { $match: { assignedTo: { $in: userIds } } },
+        { $group: {
+            _id: "$assignedTo",
+            totalAssigned: { $sum: 1 },
+            completed: { $sum: { $cond: [{ $eq: ["$status", "resolved"] }, 1, 0] } },
+            inProgress: { $sum: { $cond: [{ $eq: ["$status", "in_progress"] }, 1, 0] } },
+            highPriority: { $sum: { $cond: [{ $eq: ["$priority", "high"] }, 1, 0] } },
+          }
+        }
+      ]);
+      
+      // Map stats to users
+      const statsMap = new Map(reportStats.map(stat => [stat._id.toString(), stat]));
+      
+      // Enhance user objects with stats
+      users.forEach(user => {
+        const stats = statsMap.get(user._id.toString());
+        const totalAssigned = stats?.totalAssigned || 0;
+        const completed = stats?.completed || 0;
+        
+        user._doc.workloadStats = {
+          reportsAssigned: totalAssigned,
+          reportsCompleted: completed,
+          highPriorityCount: stats?.highPriority || 0,
+          inProgressCount: stats?.inProgress || 0
+        };
+        
+        // Calculate workload percentage (based on assigned reports and priority)
+        // Simple formula: base workload + bonus for high priority
+        const baseWorkload = Math.min(totalAssigned * 10, 80); // Base workload capped at 80%
+        const priorityBonus = Math.min((stats?.highPriority || 0) * 5, 20); // Priority bonus capped at 20%
+        user._doc.workload = Math.min(baseWorkload + priorityBonus, 100);
+        
+        // Calculate performance (based on completion rate)
+        user._doc.performance = totalAssigned > 0 
+          ? Math.round((completed / totalAssigned) * 100) 
+          : 0;
+      });
+    }
 
     res.status(200).json({
       success: true,

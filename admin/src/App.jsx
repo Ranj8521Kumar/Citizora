@@ -7,6 +7,7 @@ import { ReportManagement } from './components/Dashboard/ReportManagement.jsx';
 import { EmployeeAssignment } from './components/Dashboard/EmployeeAssignment.jsx';
 import { SystemAdministration } from './components/Dashboard/SystemAdministration.jsx';
 import { AuthModal } from './components/Auth/AuthModal.jsx';
+import { Toaster } from './components/ui/toaster.jsx';
 import { Shield } from 'lucide-react';
 import apiService from './services/api';
 import './utils/testConnection';
@@ -133,14 +134,17 @@ const App = () => {
   }
 
   return (
-    <DashboardLayout 
-      activeTab={activeTab} 
-      onTabChange={setActiveTab}
-      user={user}
-      onLogout={handleLogout}
-    >
-      {renderContent()}
-    </DashboardLayout>
+    <>
+      <DashboardLayout 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab}
+        user={user}
+        onLogout={handleLogout}
+      >
+        {renderContent()}
+      </DashboardLayout>
+      <Toaster />
+    </>
   );
 };
 

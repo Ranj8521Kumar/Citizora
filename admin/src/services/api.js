@@ -56,9 +56,10 @@ class ApiService {
       if (!response.ok) {
         // Try to parse error response if possible
         let errorMessage = `HTTP error! status: ${response.status}`;
+        let errorData;
         
         try {
-          const errorData = await response.json();
+          errorData = await response.json();
           if (errorData.message) {
             errorMessage = errorData.message;
           } else if (errorData.error) {
@@ -69,7 +70,12 @@ class ApiService {
         }
         
         console.error(`API error: ${errorMessage}`);
-        throw new Error(errorMessage);
+        const error = new Error(errorMessage);
+        error.response = {
+          status: response.status,
+          data: errorData || { message: errorMessage }
+        };
+        throw error;
       }
       
       return await response.json();
@@ -369,6 +375,43 @@ class ApiService {
     return await this.request('/admin/reports/bulk-delete', {
       method: 'POST',
       body: JSON.stringify({ reportIds, comment }),
+    });
+  }
+
+  // Individual report operations
+  async getReportDetails(reportId) {
+    return await this.request(`/reports/${reportId}`);
+  }
+  
+  async updateReport(reportId, reportData) {
+    // Use the new PATCH endpoint we've created
+    return await this.request(`/reports/${reportId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(reportData),
+    });
+  }
+  
+  async assignReport(reportId, assignData) {
+    return await this.request(`/reports/${reportId}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify(assignData),
+    });
+  }
+  
+  async addReportComment(reportId, commentData) {
+    return await this.request(`/reports/${reportId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(commentData),
+    });
+  }
+  
+  async getReportComments(reportId) {
+    return await this.request(`/reports/${reportId}/comments`);
+  }
+  
+  async deleteReport(reportId) {
+    return await this.request(`/reports/${reportId}`, {
+      method: 'DELETE',
     });
   }
 

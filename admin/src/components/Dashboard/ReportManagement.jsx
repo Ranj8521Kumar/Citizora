@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '../ui/dropdown-menu.jsx';
+import { useToast } from '../ui/use-toast.jsx';
 import { 
   Search, 
   Filter, 
@@ -35,6 +36,10 @@ import {
   ClipboardList
 } from 'lucide-react';
 import apiService from '../../services/api.js';
+import { ReportDetailModal } from './ReportDetailModal.jsx';
+import { EditReportModal } from './EditReportModal.jsx';
+import { AssignReportModal } from './AssignReportModal.jsx';
+import { CommentModal } from './CommentModal.jsx';
 
 // Default priority badge variants
 const getPriorityVariant = (priority) => {
@@ -83,6 +88,7 @@ const formatStatusForDisplay = (status) => {
 };
 
 export const ReportManagement = () => {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reports, setReports] = useState([]);
@@ -95,6 +101,12 @@ export const ReportManagement = () => {
   const [actionInProgress, setActionInProgress] = useState(false);
   const [fieldWorkers, setFieldWorkers] = useState([]);
   const [activeTab, setActiveTab] = useState('all-reports');
+  
+  // Modal states
+  const [viewReportModal, setViewReportModal] = useState({ isOpen: false, reportId: null });
+  const [editReportModal, setEditReportModal] = useState({ isOpen: false, reportId: null });
+  const [assignReportModal, setAssignReportModal] = useState({ isOpen: false, reportId: null });
+  const [commentModal, setCommentModal] = useState({ isOpen: false, reportId: null });
   
   // Fetch reports data
   useEffect(() => {
@@ -395,42 +407,114 @@ export const ReportManagement = () => {
   // Single report action handlers
   const handleViewReport = (reportId) => {
     console.log(`View report details for ID: ${reportId}`);
-    // In a real implementation, you might navigate to a details page or open a modal
-    alert(`Viewing details for report ID: ${reportId}`);
+    setViewReportModal({ isOpen: true, reportId });
   };
 
   const handleEditReport = (reportId) => {
     console.log(`Edit report with ID: ${reportId}`);
-    // In a real implementation, you might navigate to an edit page or open a modal
-    alert(`Editing report ID: ${reportId}`);
+    setEditReportModal({ isOpen: true, reportId });
   };
 
   const handleAssignReport = (reportId) => {
     console.log(`Assign report with ID: ${reportId}`);
-    // In a real implementation, you might open an assignment modal
-    const selectedWorker = fieldWorkers.length > 0 ? fieldWorkers[0] : null;
-    if (selectedWorker) {
-      handleBulkAssign(selectedWorker._id);
-    } else {
-      alert('No field workers available for assignment');
-    }
+    setAssignReportModal({ isOpen: true, reportId });
   };
 
-  const handleDeleteReport = (reportId) => {
+  const handleDeleteReport = async (reportId) => {
     console.log(`Delete report with ID: ${reportId}`);
     if (window.confirm('Are you sure you want to delete this report?')) {
-      setSelectedReports([reportId]);
-      handleBulkDelete();
+      try {
+        setActionInProgress(true);
+        
+        // Call API to delete the report
+        await apiService.deleteReport(reportId);
+        
+        // Update local state
+        setReports(prevReports => prevReports.filter(report => report._id !== reportId));
+        
+        toast({
+          title: 'Success',
+          description: 'Report deleted successfully',
+          variant: 'success',
+        });
+      } catch (err) {
+        console.error('Error deleting report:', err);
+        toast({
+          title: 'Error',
+          description: 'Failed to delete report. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setActionInProgress(false);
+      }
     }
   };
 
   const handleAddComment = (reportId) => {
     console.log(`Add comment to report with ID: ${reportId}`);
-    // In a real implementation, you might open a comment modal
-    const comment = prompt('Enter your comment:');
-    if (comment) {
-      alert(`Comment added to report ID: ${reportId}: ${comment}`);
+    setCommentModal({ isOpen: true, reportId });
+  };
+  
+  // Handle report update after edit
+  const handleReportUpdated = (updatedReport) => {
+    // Update the report in the reports list
+    setReports(prevReports => 
+      prevReports.map(report => 
+        report._id === updatedReport._id ? updatedReport : report
+      )
+    );
+    
+    toast({
+      title: 'Success',
+      description: 'Report updated successfully',
+      variant: 'success',
+    });
+  };
+  
+  // Handle report assignment
+  const handleReportAssigned = (updatedReport) => {
+    // Check if we need to add the field worker details to the report
+    if (updatedReport.assignedTo && typeof updatedReport.assignedTo === 'string') {
+      // Find the field worker by ID
+      const workerId = updatedReport.assignedTo;
+      const worker = fieldWorkers.find(w => w._id === workerId);
+      
+      if (worker) {
+        // Update the report with field worker details
+        updatedReport = {
+          ...updatedReport,
+          assignedTo: {
+            _id: workerId,
+            firstName: worker.firstName,
+            lastName: worker.lastName
+          }
+        };
+      }
     }
+    
+    console.log('Updating report with assignment details:', updatedReport);
+    
+    // Update the report in the reports list
+    setReports(prevReports => 
+      prevReports.map(report => 
+        report._id === updatedReport._id ? updatedReport : report
+      )
+    );
+    
+    toast({
+      title: 'Success',
+      description: 'Report assigned successfully',
+      variant: 'success',
+    });
+  };
+  
+  // Handle comment added
+  const handleCommentAdded = (comment) => {
+    toast({
+      title: 'Success',
+      description: 'Comment added successfully',
+      variant: 'success',
+    });
   };
   
   // Handle sort change
@@ -1112,6 +1196,34 @@ export const ReportManagement = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Report Modals */}
+      <ReportDetailModal 
+        isOpen={viewReportModal.isOpen} 
+        onClose={() => setViewReportModal({ isOpen: false, reportId: null })} 
+        reportId={viewReportModal.reportId} 
+      />
+      
+      <EditReportModal 
+        isOpen={editReportModal.isOpen} 
+        onClose={() => setEditReportModal({ isOpen: false, reportId: null })} 
+        reportId={editReportModal.reportId}
+        onReportUpdated={handleReportUpdated}
+      />
+      
+      <AssignReportModal 
+        isOpen={assignReportModal.isOpen} 
+        onClose={() => setAssignReportModal({ isOpen: false, reportId: null })} 
+        reportId={assignReportModal.reportId}
+        onReportAssigned={handleReportAssigned}
+      />
+      
+      <CommentModal 
+        isOpen={commentModal.isOpen} 
+        onClose={() => setCommentModal({ isOpen: false, reportId: null })} 
+        reportId={commentModal.reportId}
+        onCommentAdded={handleCommentAdded}
+      />
     </div>
   );
 };

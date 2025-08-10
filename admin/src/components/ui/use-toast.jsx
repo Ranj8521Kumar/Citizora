@@ -93,4 +93,130 @@ const ToastDescription = React.forwardRef(({ className, ...props }, ref) => (
 ));
 ToastDescription.displayName = ToastPrimitives.Description.displayName;
 
-export { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose, ToastAction };
+// Hook implementation
+const TOAST_LIMIT = 5;
+const TOAST_REMOVE_DELAY = 5000; // 5 seconds
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+};
+
+let count = 0;
+
+function genId() {
+  count = (count + 1) % Number.MAX_VALUE;
+  return count.toString();
+}
+
+const toastTimeouts = new Map();
+
+const toastsReducer = (state, action) => {
+  switch (action.type) {
+    case actionTypes.ADD_TOAST:
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      };
+
+    case actionTypes.UPDATE_TOAST:
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
+      };
+
+    case actionTypes.DISMISS_TOAST:
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toastId || action.toastId === "all"
+            ? { ...t, open: false }
+            : t
+        ),
+      };
+
+    case actionTypes.REMOVE_TOAST:
+      if (action.toastId === "all") {
+        return {
+          ...state,
+          toasts: [],
+        };
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      };
+    default:
+      return state;
+  }
+};
+
+const useToast = () => {
+  const [state, dispatch] = React.useReducer(toastsReducer, {
+    toasts: [],
+  });
+
+  React.useEffect(() => {
+    state.toasts.forEach((toast) => {
+      if (toast.open === false && !toastTimeouts.has(toast.id)) {
+        const timeoutId = setTimeout(() => {
+          dispatch({ type: actionTypes.REMOVE_TOAST, toastId: toast.id });
+        }, TOAST_REMOVE_DELAY);
+
+        toastTimeouts.set(toast.id, timeoutId);
+      }
+    });
+
+    return () => {
+      toastTimeouts.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      toastTimeouts.clear();
+    };
+  }, [state.toasts]);
+
+  const toast = React.useCallback(function ({ ...props }) {
+    const id = genId();
+
+    dispatch({
+      type: actionTypes.ADD_TOAST,
+      toast: {
+        id,
+        open: true,
+        ...props,
+      },
+    });
+
+    return id;
+  }, []);
+
+  const update = React.useCallback(
+    function (id, { ...props }) {
+      dispatch({
+        type: actionTypes.UPDATE_TOAST,
+        toast: {
+          id,
+          ...props,
+        },
+      });
+    },
+    []
+  );
+
+  const dismiss = React.useCallback(function (toastId = "all") {
+    dispatch({ type: actionTypes.DISMISS_TOAST, toastId });
+  }, []);
+
+  return {
+    toast,
+    dismiss,
+    update,
+    toasts: state.toasts,
+  };
+};
+
+export { ToastProvider, ToastViewport, Toast, ToastTitle, ToastDescription, ToastClose, ToastAction, useToast };

@@ -1,20 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Clock, Camera, MessageCircle, CheckCircle, Play, Pause, Phone } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Separator } from './ui/separator';
+import { saveReportNotes } from '../services/api';
 
 export function ReportDetail({ report, onStatusUpdate, onBack }) {
   const [notes, setNotes] = useState('');
-  const [currentStatus, setCurrentStatus] = useState(report?.status || 'assigned');
+  
+  // Determine the initial status, checking for paused state
+  const getInitialStatus = (report) => {
+    if (!report) return 'assigned';
+    
+    // First convert API format to UI format
+    let status = report.status?.replace(/_/g, '-') || 'assigned';
+    
+    // Check if this is actually a paused task
+    if (report.isPaused) {
+      // Use the isPaused flag set by the API service
+      status = 'paused';
+    } 
+    else if (status === 'in-progress' && report.timeline) {
+      // Check the original data if available
+      const timeline = report.originalData?.timeline || report.timeline;
+      
+      if (timeline && timeline.length > 0) {
+        const lastEntry = timeline[timeline.length - 1];
+        if (lastEntry && lastEntry.comment && lastEntry.comment.includes('Task paused')) {
+          status = 'paused';
+        }
+      }
+      
+      // Also check local storage as a last resort
+      const pausedReports = JSON.parse(localStorage.getItem('pausedReports') || '{}');
+      if (pausedReports[report._id] || pausedReports[report.id]) {
+        status = 'paused';
+      }
+    }
+    
+    return status;
+  };
+  
+  const [currentStatus, setCurrentStatus] = useState(getInitialStatus(report));
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  
+  // Update status when report changes (e.g., on refresh)
+  useEffect(() => {
+    setCurrentStatus(getInitialStatus(report));
+  }, [report]);
 
   if (!report) return null;
 
-  const handleStatusChange = (newStatus) => {
-    setCurrentStatus(newStatus);
-    onStatusUpdate(report.id, newStatus);
+  const handleStatusChange = async (newStatus) => {
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      
+      // Prepare a comment based on the status change
+      let comment = '';
+      if (newStatus === 'paused') {
+        comment = 'Task paused';
+      } else if (currentStatus === 'paused' && newStatus === 'in-progress') {
+        comment = 'Task resumed';
+      }
+      
+      // Update local state
+      setCurrentStatus(newStatus);
+      
+      // Call the parent component handler (which will call the API)
+      // Use report._id if it exists, otherwise fall back to report.id
+      const reportId = report._id || report.id;
+      await onStatusUpdate(reportId, newStatus, comment);
+      
+      setIsSaving(false);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      setSaveError('Failed to update status. Please try again.');
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!notes.trim()) return;
+    
+    try {
+      setIsSaving(true);
+      setSaveError(null);
+      
+      // Call API to save notes
+      // Use report._id if it exists, otherwise fall back to report.id
+      const reportId = report._id || report.id;
+      await saveReportNotes(reportId, notes);
+      
+      // Reset notes after saving
+      setNotes('');
+      setIsSaving(false);
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      setSaveError('Failed to save notes. Please try again.');
+      setIsSaving(false);
+    }
   };
 
   const getPriorityVariant = (priority) => {
@@ -31,6 +119,7 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
     switch (status) {
       case 'assigned': return 'secondary';
       case 'in-progress': return 'default';
+      case 'paused': return 'destructive'; // Using destructive (usually red/orange) for paused
       case 'completed': return 'outline';
       default: return 'secondary';
     }
@@ -64,6 +153,12 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4 space-y-6">
+        {saveError && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 text-destructive text-sm">
+            {saveError}
+          </div>
+        )}
+        
         {/* Basic Info */}
         <Card>
           <CardHeader>
@@ -72,7 +167,47 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="w-4 h-4" />
-              <span>{report.location}</span>
+              <span>
+                {(() => {
+                  // Safe location rendering logic
+                  if (typeof report.location === 'string') {
+                    return report.location;
+                  }
+                  
+                  if (typeof report.location === 'object' && report.location !== null) {
+                    // Case 1: If location has a string address property
+                    if (report.location.address && typeof report.location.address === 'string') {
+                      return report.location.address;
+                    }
+                    
+                    // Case 2: If location.address is an object with street, city, etc.
+                    if (report.location.address && typeof report.location.address === 'object') {
+                      const addr = report.location.address;
+                      const parts = [];
+                      if (addr.street) parts.push(addr.street);
+                      if (addr.city) parts.push(addr.city);
+                      if (addr.state) parts.push(addr.state);
+                      if (addr.zipCode) parts.push(addr.zipCode);
+                      return parts.join(', ') || 'Unknown location';
+                    }
+                    
+                    // Case 3: If location has direct street, city properties
+                    if (report.location.street || report.location.city || report.location.state) {
+                      const parts = [];
+                      if (report.location.street) parts.push(report.location.street);
+                      if (report.location.city) parts.push(report.location.city);
+                      if (report.location.state) parts.push(report.location.state);
+                      if (report.location.zipCode) parts.push(report.location.zipCode);
+                      return parts.join(', ') || 'Unknown location';
+                    }
+                    
+                    // Case 4: If location has other properties we can't anticipate
+                    return 'Location details available';
+                  }
+                  
+                  return 'Unknown location';
+                })()}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="w-4 h-4" />
@@ -94,9 +229,16 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
                 <Button
                   onClick={() => handleStatusChange('in-progress')}
                   className="gap-2"
+                  disabled={isSaving}
                 >
-                  <Play className="w-4 h-4" />
-                  Start Task
+                  {isSaving ? (
+                    <span className="animate-pulse">Processing...</span>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      Start Task
+                    </>
+                  )}
                 </Button>
               )}
               
@@ -105,19 +247,44 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
                   <Button
                     onClick={() => handleStatusChange('completed')}
                     className="gap-2"
+                    disabled={isSaving}
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    Complete
+                    {isSaving ? (
+                      <span className="animate-pulse">Processing...</span>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Complete
+                      </>
+                    )}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleStatusChange('assigned')}
+                    onClick={() => handleStatusChange('paused')}
                     className="gap-2"
+                    disabled={isSaving}
                   >
                     <Pause className="w-4 h-4" />
                     Pause
                   </Button>
                 </>
+              )}
+              
+              {currentStatus === 'paused' && (
+                <Button
+                  onClick={() => handleStatusChange('in-progress')}
+                  className="gap-2"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <span className="animate-pulse">Processing...</span>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      Resume Task
+                    </>
+                  )}
+                </Button>
               )}
               
               <Button variant="outline" className="gap-2">
@@ -145,9 +312,14 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
               placeholder="Add notes about your progress..."
               className="resize-none"
               rows={4}
+              disabled={isSaving}
             />
-            <Button className="w-full">
-              Save Notes
+            <Button 
+              className="w-full"
+              onClick={handleSaveNotes}
+              disabled={!notes.trim() || isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save Notes'}
             </Button>
           </CardContent>
         </Card>

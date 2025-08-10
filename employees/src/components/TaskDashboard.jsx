@@ -1,64 +1,126 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Clock, CheckCircle, Filter, Search, Star, ArrowRight, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Clock, CheckCircle, Filter, Search, Star, ArrowRight, Download, Loader2, Pause } from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { downloadCSV, downloadJSON } from '../utils/csvExport';
-// Import without file extension, let vite resolve it
 import { ExportButton } from './ui/export-button';
+import { getFieldWorkerReports } from '../services/api';
+import { formatTimeAgo } from '../utils/dateUtils';
 
-export function TaskDashboard({ onReportSelect }) {
-  const [filter, setFilter] = useState('all');
+export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
+  const [filter, setFilter] = useState(initialFilter);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  
+  // Update filter when initialFilter changes
+  useEffect(() => {
+    console.log("Initial filter changed to:", initialFilter);
+    setFilter(initialFilter);
+    // Reset pagination when filter changes
+    setPagination(prev => ({...prev, page: 1}));
+  }, [initialFilter]);
 
-  // Mock data for demonstration
-  const reports = [
-    {
-      id: 1,
-      title: 'Pothole on Main Street',
-      location: '123 Main St',
-      priority: 'high',
-      status: 'assigned',
-      timeAgo: '2 hours ago',
-      description: 'Large pothole causing traffic issues',
-      estimatedTime: '45 min',
-      category: 'Road Maintenance'
-    },
-    {
-      id: 2,
-      title: 'Broken Street Light',
-      location: '456 Oak Ave',
-      priority: 'medium',
-      status: 'in-progress',
-      timeAgo: '4 hours ago',
-      description: 'Street light not functioning properly',
-      estimatedTime: '30 min',
-      category: 'Electrical'
-    },
-    {
-      id: 3,
-      title: 'Graffiti Removal',
-      location: '789 Pine St',
-      priority: 'low',
-      status: 'assigned',
-      timeAgo: '1 day ago',
-      description: 'Graffiti on building wall',
-      estimatedTime: '20 min',
-      category: 'Cleaning'
-    },
-    {
-      id: 4,
-      title: 'Water Main Issue',
-      location: '321 Elm Dr',
-      priority: 'urgent',
-      status: 'assigned',
-      timeAgo: '30 minutes ago',
-      description: 'Water leak reported by resident',
-      estimatedTime: '2 hours',
-      category: 'Utilities'
-    }
-  ];
+  // Fetch reports from API
+  useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        setLoading(true);
+        
+        // Convert filter to API format (only send status if not 'all')
+        const params = {
+          page: pagination.page,
+          limit: pagination.limit
+        };
+        
+        // We'll fetch all tasks and filter them in the UI instead of server-side
+        // This ensures we always have accurate counts for all status types
+        
+        // Note: For a real production app with many tasks, we would want to implement
+        // server-side filtering with proper status mapping, but for our demo purposes
+        // this client-side approach ensures all status tabs work correctly
+        
+        const response = await getFieldWorkerReports(params);
+        
+        console.log("API Response:", response.data);
+        
+        // Format reports to match our component structure
+        const formattedReports = response.data.reports.map(report => {
+          // Format location as a string
+          let formattedLocation = 'Unknown location';
+          if (report.location && report.location.address) {
+            const address = report.location.address;
+            if (typeof address === 'string') {
+              formattedLocation = address;
+            } else if (typeof address === 'object') {
+              // Extract address components and join them
+              const parts = [];
+              if (address.street) parts.push(address.street);
+              if (address.city) parts.push(address.city);
+              if (address.state) parts.push(address.state);
+              if (address.zipCode) parts.push(address.zipCode);
+              formattedLocation = parts.join(', ') || 'Unknown location';
+            }
+          }
+
+          // Check if the task is paused
+          let status;
+          
+          // Map API status to UI status
+          console.log(`Original report status: ${report.status}`);
+          
+          if (report.status === 'resolved') {
+            status = 'completed';
+          } else {
+            status = report.status.replace(/_/g, '-'); // Convert API status format
+          }
+          
+          // Use the isPaused flag set by the API service
+          if (report.isPaused) {
+            status = 'paused';
+          } 
+          // Fallback: Check if this is actually a paused task (in_progress with "Task paused" comment)
+          else if (status === 'in-progress' && report.timeline && report.timeline.length > 0) {
+            const lastEntry = report.timeline[report.timeline.length - 1];
+            if (lastEntry && lastEntry.comment && lastEntry.comment.includes('Task paused')) {
+              status = 'paused';
+            }
+          }
+          
+          console.log(`Mapped report status: ${status}`);
+          
+          return {
+            id: report._id,
+            title: report.title,
+            location: formattedLocation,
+            priority: report.priority || 'medium',
+            status: status,
+            timeAgo: formatTimeAgo(report.createdAt),
+            description: report.description,
+            estimatedTime: report.estimatedTime || 'Unknown',
+            category: report.category || 'General',
+            // Include original report data for reference
+            originalData: report
+          };
+        });
+        
+        setReports(formattedReports);
+        setPagination(response.data.pagination);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching reports:', err);
+        setError('Failed to load reports. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReports();
+  }, [filter, pagination.page, pagination.limit]);
 
   const getPriorityVariant = (priority) => {
     switch (priority) {
@@ -74,165 +136,189 @@ export function TaskDashboard({ onReportSelect }) {
     switch (status) {
       case 'assigned': return <Clock className="w-4 h-4 text-muted-foreground" />;
       case 'in-progress': return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+      case 'paused': return <Pause className="w-4 h-4 text-red-500" />;
       case 'completed': return <CheckCircle className="w-4 h-4 text-green-500" />;
       default: return <Clock className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
+  // Filter reports by status and search term (client-side)
   const filteredReports = reports.filter(report => {
-    const matchesFilter = filter === 'all' || report.status === filter;
+    // Apply filter based on status tab
+    if (filter !== 'all') {
+      // For "completed" tab, show both "completed" and "resolved" statuses
+      if (filter === 'completed') {
+        if (report.status !== 'completed' && report.status !== 'resolved') {
+          return false;
+        }
+      } 
+      // For all other tabs, match the exact status
+      else if (report.status !== filter) {
+        return false;
+      }
+    }
+    
+    // Filter by search term
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.location.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+                         (typeof report.location === 'string' && 
+                          report.location.toLowerCase().includes(searchTerm.toLowerCase()));
+    return matchesSearch;
   });
 
+  // Sort reports by priority
   const sortedReports = filteredReports.sort((a, b) => {
     const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
     return priorityOrder[b.priority] - priorityOrder[a.priority];
   });
 
+  // Calculate status counts from reports data after mapping is applied
+  const statusCounts = {
+    all: reports.length,
+    assigned: reports.filter(r => r.status === 'assigned').length,
+    'in-progress': reports.filter(r => r.status === 'in-progress').length,
+    paused: reports.filter(r => r.status === 'paused').length,
+    completed: reports.filter(r => r.status === 'completed' || r.status === 'resolved').length
+  };
+  
+  // Debug - log status counts
+  console.log("Status counts:", statusCounts);
+  console.log("Current filter:", filter);
+
   const filters = [
-    { id: 'all', label: 'All Tasks', count: reports.length },
-    { id: 'assigned', label: 'Assigned', count: reports.filter(r => r.status === 'assigned').length },
-    { id: 'in-progress', label: 'In Progress', count: reports.filter(r => r.status === 'in-progress').length },
-    { id: 'completed', label: 'Completed', count: reports.filter(r => r.status === 'completed').length }
+    { id: 'all', label: 'All Tasks', count: statusCounts.all },
+    { id: 'assigned', label: 'Assigned', count: statusCounts.assigned },
+    { id: 'in-progress', label: 'In Progress', count: statusCounts['in-progress'] },
+    { id: 'paused', label: 'Paused', count: statusCounts.paused },
+    { id: 'completed', label: 'Completed', count: statusCounts.completed }
   ];
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Header Section */}
-      <div className="bg-card border-b border-border p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-foreground">Field Tasks</h1>
-            <p className="text-muted-foreground mt-1">
-              {filteredReports.length} active tasks
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => downloadCSV(reports, 'task-reports.csv')}
-            >
-              <Download className="w-4 h-4" />
-              Export CSV
-            </Button>
-            <ExportButton 
-              onExportCSV={() => downloadCSV(reports, 'task-reports.csv')}
-              onExportJSON={() => downloadJSON(reports, 'task-reports.json')}
-              buttonSize="sm"
-              label="Export Options"
-            />
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="w-4 h-4" />
-              Filter
-            </Button>
-          </div>
-        </div>
-
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            type="text"
-            placeholder="Search tasks or locations..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+    <div className="flex flex-col h-full">
+      <div className="bg-card border-b border-border p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-foreground text-lg font-semibold">Task Dashboard</h1>
+          <ExportButton
+            data={reports}
+            filename="field-worker-tasks"
+            options={[
+              { label: 'CSV', onClick: data => downloadCSV(data, 'field-worker-tasks') },
+              { label: 'JSON', onClick: data => downloadJSON(data, 'field-worker-tasks') }
+            ]}
           />
         </div>
-
-        {/* Filter Tabs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {filters.map((filterOption) => (
-            <Button
-              key={filterOption.id}
-              variant={filter === filterOption.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(filterOption.id)}
-              className="justify-between"
-            >
-              <span>{filterOption.label}</span>
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {filterOption.count}
-              </Badge>
-            </Button>
-          ))}
+        
+        <div className="flex flex-col space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {filters.map(item => (
+              <Button
+                key={item.id}
+                variant={filter === item.id ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter(item.id)}
+                className="flex items-center gap-2 whitespace-nowrap"
+              >
+                {item.label}
+                <Badge variant="secondary" className="ml-1">
+                  {item.count}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+          
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+            <Input
+              placeholder="Search by title or location..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
       </div>
-
-      {/* Task List */}
-      <div className="flex-1 overflow-auto p-4 space-y-3">
-        {sortedReports.map((report) => (
-          <Card
-            key={report.id}
-            className="cursor-pointer hover:shadow-md transition-all duration-200 hover:border-primary/20 group"
-            onClick={() => onReportSelect(report)}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant={getPriorityVariant(report.priority)} className="text-xs">
-                      {report.priority.toUpperCase()}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {report.category}
-                    </Badge>
-                  </div>
-                  <h3 className="text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                    {report.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    {report.location}
-                  </p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              </div>
-            </CardHeader>
-            
-            <CardContent className="pt-0">
-              <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-                {report.description}
-              </p>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    {getStatusIcon(report.status)}
-                    <span className="text-xs text-muted-foreground capitalize">
-                      {report.status.replace('-', ' ')}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {report.timeAgo}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-primary">
-                  <Clock className="w-3 h-3" />
-                  <span className="text-xs font-medium">
-                    {report.estimatedTime}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {filteredReports.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Clock className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-foreground mb-2">No tasks found</h3>
-            <p className="text-muted-foreground text-sm">
-              Try adjusting your search or filter criteria
+      
+      <div className="flex-1 overflow-auto p-4">
+        {loading ? (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4 text-center">
+            <p className="text-destructive">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline" className="mt-2">
+              Retry
+            </Button>
+          </div>
+        ) : sortedReports.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-2">No tasks found</p>
+            <p className="text-sm text-muted-foreground">
+              {searchTerm ? 'Try a different search term' : 'All your assigned tasks will appear here'}
             </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {sortedReports.map(report => (
+              <Card key={report.id} className="hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => onReportSelect(report)}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {getStatusIcon(report.status)}
+                        <h3 className="font-medium text-foreground truncate">{report.title}</h3>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
+                        <span className="text-xs text-muted-foreground truncate">
+                          {report.location}
+                        </span>
+                        <span className="hidden sm:block text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">{report.timeAgo}</span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant={getPriorityVariant(report.priority)}>
+                          {report.priority.toUpperCase()}
+                        </Badge>
+                        <Badge variant="outline">{report.category}</Badge>
+                      </div>
+                    </div>
+                    
+                    <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </div>
+      
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="border-t border-border p-4 flex justify-between items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            disabled={pagination.page === 1}
+          >
+            Previous
+          </Button>
+          
+          <span className="text-sm text-muted-foreground">
+            Page {pagination.page} of {pagination.pages}
+          </span>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
+            disabled={pagination.page === pagination.pages}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

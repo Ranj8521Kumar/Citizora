@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Clock, Camera, MessageCircle, CheckCircle, Play, Pause, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Camera, MessageCircle, CheckCircle, Play, Pause, Phone, X, Image } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Separator } from './ui/separator';
 import { saveReportNotes } from '../services/api';
+import { PhotoCapture } from './PhotoCapture';
 
 export function ReportDetail({ report, onStatusUpdate, onBack }) {
   const [notes, setNotes] = useState('');
+  const [isPhotoCaptureOpen, setIsPhotoCaptureOpen] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [photoCaptureMode, setPhotoCaptureMode] = useState('camera'); // 'camera' or 'upload'
   
   // Determine the initial status, checking for paused state
   const getInitialStatus = (report) => {
@@ -123,6 +127,31 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
       case 'completed': return 'outline';
       default: return 'secondary';
     }
+  };
+  
+  // Handle photo capture
+  const handleOpenPhotoCapture = (mode = 'camera') => {
+    setPhotoCaptureMode(mode);
+    setIsPhotoCaptureOpen(true);
+  };
+  
+  const handlePhotoCapture = (photoDataUrl) => {
+    // Add the new photo to our collection
+    const newPhoto = {
+      id: Date.now(),
+      url: photoDataUrl,
+      timestamp: new Date().toISOString(),
+      reportId: report.id
+    };
+    setPhotos(prev => [...prev, newPhoto]);
+    
+    // Here you would normally upload the photo to your server
+    // This could call an API function like uploadReportPhoto(report.id, photoDataUrl)
+  };
+  
+  const handleDeletePhoto = (photoId) => {
+    setPhotos(prev => prev.filter(photo => photo.id !== photoId));
+    // If connected to API: deleteReportPhoto(photoId)
   };
   
   // Function to handle navigation to the report location
@@ -347,7 +376,11 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
                 </Button>
               )}
               
-              <Button variant="outline" className="gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => handleOpenPhotoCapture('camera')}
+              >
                 <Camera className="w-4 h-4" />
                 Take Photo
               </Button>
@@ -411,24 +444,68 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
             <CardTitle>Photo Documentation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              {/* Mock photo thumbnails */}
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="aspect-square bg-muted rounded-lg flex items-center justify-center border border-border hover:border-primary/50 transition-colors cursor-pointer"
-                >
-                  <Camera className="w-6 h-6 text-muted-foreground" />
-                </div>
-              ))}
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {photos.map((photo) => (
+                  <div
+                    key={photo.id}
+                    className="relative aspect-square rounded-lg border border-border overflow-hidden group"
+                  >
+                    <img 
+                      src={photo.url} 
+                      alt="Documentation" 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="w-8 h-8"
+                        onClick={() => handleDeletePhoto(photo.id)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-muted/50 rounded-lg">
+                <Camera className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-muted-foreground">No photos added yet</p>
+              </div>
+            )}
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1 gap-2 border-dashed"
+                onClick={() => handleOpenPhotoCapture('camera')}
+              >
+                <Camera className="w-4 h-4" />
+                Take Photo
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="flex-1 gap-2 border-dashed"
+                onClick={() => handleOpenPhotoCapture('upload')}
+              >
+                <Image className="w-4 h-4" />
+                Upload Photo
+              </Button>
             </div>
-            <Button variant="outline" className="w-full gap-2 border-dashed">
-              <Camera className="w-4 h-4" />
-              Add Photo
-            </Button>
           </CardContent>
         </Card>
       </div>
+      
+      {/* Photo Capture Dialog */}
+      <PhotoCapture
+        isOpen={isPhotoCaptureOpen}
+        onClose={() => setIsPhotoCaptureOpen(false)}
+        onCapture={handlePhotoCapture}
+        initialMode={photoCaptureMode}
+      />
     </div>
   );
 }

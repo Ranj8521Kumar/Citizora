@@ -21,6 +21,7 @@ const App = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [theme, setTheme] = useState('system');
 
   // Check for existing token on app load
   useEffect(() => {
@@ -48,6 +49,21 @@ const App = () => {
     };
 
     initializeApp();
+  }, []);
+  
+  // Apply theme on app load
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    setTheme(savedTheme);
+    
+    // Apply the theme class
+    document.documentElement.classList.remove('light', 'dark');
+    if (savedTheme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.classList.add(systemTheme);
+    } else {
+      document.documentElement.classList.add(savedTheme);
+    }
   }, []);
 
   const handleLogin = (userData) => {
@@ -136,6 +152,12 @@ const App = () => {
     );
   }
 
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    // Persist the theme preference to localStorage
+    localStorage.setItem('theme', newTheme);
+  };
+
   return (
     <>
       <DashboardLayout 
@@ -143,6 +165,8 @@ const App = () => {
         onTabChange={setActiveTab}
         user={user}
         onLogout={handleLogout}
+        theme={theme}
+        onThemeChange={handleThemeChange}
       >
         {renderContent()}
       </DashboardLayout>

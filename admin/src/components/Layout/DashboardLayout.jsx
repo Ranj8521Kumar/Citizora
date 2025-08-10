@@ -4,9 +4,9 @@ import { Button } from '../ui/button.jsx';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar.jsx';
 import { Badge } from '../ui/badge.jsx';
 import { NotificationPopover } from './NotificationPopover.jsx';
+import { SettingsDropdown } from './SettingsDropdown.jsx';
 import { 
   Menu, 
-  Settings, 
   ChevronLeft, 
   ChevronRight,
   BarChart3,
@@ -28,7 +28,7 @@ const navigationItems = [
   { id: 'settings', label: 'System Administration', icon: Shield },
 ];
 
-export const DashboardLayout = ({ children, activeTab, onTabChange, user, onLogout }) => {
+export const DashboardLayout = ({ children, activeTab, onTabChange, user, onLogout, theme, onThemeChange }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -204,13 +204,11 @@ export const DashboardLayout = ({ children, activeTab, onTabChange, user, onLogo
               <NotificationPopover onViewAll={() => onTabChange('notifications')} />
               
               {/* Settings */}
-              <Button 
-                variant="ghost" 
-                size="sm"
-                aria-label="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </Button>
+              <SettingsDropdown 
+                onNavigateToSettings={() => onTabChange('settings')}
+                onChangeTheme={onThemeChange}
+                currentTheme={theme}
+              />
               
               {/* User Profile */}
               <div className="relative group flex items-center gap-3 pl-4 border-l border-gray-200">

@@ -1,9 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin's App</title>
+    <title>CivicConnect Admin Portal</title>
+    <!-- Theme setup script -->
+    <script>
+      // Check for saved theme preference or use browser preference
+      const theme = localStorage.getItem('theme') || 'system';
+      
+      // If theme is system, check browser preference
+      if (theme === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.add(prefersDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.classList.add(theme);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

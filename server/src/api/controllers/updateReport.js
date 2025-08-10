@@ -66,7 +66,7 @@ exports.updateReport = async (req, res, next) => {
     if (updatedReport.reportedBy) {
       await Notification.createNotification({
         recipient: updatedReport.reportedBy,
-        type: 'report_updated',
+        type: 'report_status',
         title: `Report Updated: ${updatedReport.title}`,
         message: `Your report has been updated by an administrator`,
         relatedTo: {
@@ -80,7 +80,7 @@ exports.updateReport = async (req, res, next) => {
     if (updatedReport.assignedTo) {
       await Notification.createNotification({
         recipient: updatedReport.assignedTo,
-        type: 'report_updated',
+        type: 'report_status',
         title: `Report Updated: ${updatedReport.title}`,
         message: `A report assigned to you has been updated by an administrator`,
         relatedTo: {

@@ -114,6 +114,11 @@ class ApiService {
 
   async getAllUsers(filters = {}) {
     try {
+      // If we're getting field workers, include workload stats
+      if (filters.role === 'employee') {
+        filters.includeWorkloadStats = 'true';
+      }
+      
       const queryParams = new URLSearchParams(filters).toString();
       const endpoint = queryParams ? `/admin/users?${queryParams}` : '/admin/users';
       const response = await this.request(endpoint);
@@ -134,6 +139,33 @@ class ApiService {
             // Try to get ID from _id or userId fields
             user.id = user._id || user.userId || `temp-${Math.random().toString(36).substr(2, 9)}`;
           }
+          
+          // Format user name
+          user.name = `${user.firstName} ${user.lastName}`;
+          
+          // Ensure workload stats exist
+          if (!user.workloadStats) {
+            user.workloadStats = {
+              reportsAssigned: 0,
+              reportsCompleted: 0,
+              highPriorityCount: 0,
+              inProgressCount: 0
+            };
+          }
+          
+          // Ensure workload and performance fields
+          if (user.workload === undefined) {
+            user.workload = 0;
+          }
+          
+          if (user.performance === undefined) {
+            user.performance = 0;
+          }
+          
+          // Map reportsAssigned and reportsCompleted
+          user.reportsAssigned = user.workloadStats?.reportsAssigned || 0;
+          user.reportsCompleted = user.workloadStats?.reportsCompleted || 0;
+          
           return user;
         });
       }
@@ -349,12 +381,38 @@ class ApiService {
       // First try the admin-specific endpoint
       const adminEndpoint = queryParams ? `/admin/reports/search?${queryParams}` : '/admin/reports/search';
       console.log('Requesting from admin endpoint:', this.baseURL + adminEndpoint);
-      return await this.request(adminEndpoint);
+      const response = await this.request(adminEndpoint);
+      
+      // Ensure reports is an array and properly formatted
+      if (!response.reports && response.data?.reports) {
+        response.reports = response.data.reports;
+      }
+      
+      if (!Array.isArray(response.reports)) {
+        response.reports = [];
+      }
+      
+      return response;
     } catch (err) {
       console.log('Falling back to general reports endpoint:', err.message);
       // Fall back to the general reports endpoint if the admin endpoint fails
-      return await this.request(endpoint);
+      const response = await this.request(endpoint);
+      
+      // Ensure reports is an array
+      if (!response.reports && response.data?.reports) {
+        response.reports = response.data.reports;
+      }
+      
+      if (!Array.isArray(response.reports)) {
+        response.reports = [];
+      }
+      
+      return response;
     }
+  }
+  
+  async searchReports(filters = {}) {
+    return this.advancedReportSearch(filters);
   }
 
   async bulkUpdateReportStatus(reportIds, status, comment = '') {

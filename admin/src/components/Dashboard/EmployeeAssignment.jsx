@@ -58,19 +58,14 @@ export const EmployeeAssignment = () => {
     const fetchEmployees = async () => {
       try {
         setLoading(true);
-        const response = await apiService.getAllUsers();
+        const response = await apiService.getAllUsers({ role: 'employee' });
         
         // Filter for field workers only
         const fieldWorkers = response.users.filter(user => 
-          user.role === 'Field Worker'
-        ).map(worker => ({
-          ...worker,
-          name: `${worker.firstName} ${worker.lastName}`,
-          workload: Math.floor(Math.random() * 100), // This would come from the API in a real implementation
-          performance: Math.floor(Math.random() * 100), // This would come from the API in a real implementation
-          reportsAssigned: Math.floor(Math.random() * 20), // This would come from the API in a real implementation
-          reportsCompleted: Math.floor(Math.random() * 15) // This would come from the API in a real implementation
-        }));
+          user.role === 'employee'
+        );
+        
+        console.log('Field workers:', fieldWorkers);
         
         setEmployees(fieldWorkers);
         setLoading(false);
@@ -94,11 +89,29 @@ export const EmployeeAssignment = () => {
     const fetchEmployeeReports = async () => {
       try {
         setLoadingReports(true);
+        
+        // Use the employee's _id rather than id to ensure consistency
         const response = await apiService.searchReports({
-          assignedTo: selectedEmployee.id
+          assignedTo: selectedEmployee._id
         });
         
-        setEmployeeReports(response.reports || []);
+        console.log('Employee reports response:', response);
+        
+        // Transform report data if needed
+        const reports = (response.reports || []).map(report => ({
+          ...report,
+          // Ensure each report has these fields
+          id: report._id || report.id,
+          title: report.title || 'Untitled Report',
+          description: report.description || 'No description provided',
+          status: report.status || 'submitted',
+          priority: report.priority || 'medium',
+          createdAt: report.createdAt || new Date().toISOString(),
+          location: report.location?.address?.city || 'Unknown Location'
+        }));
+        
+        console.log('Formatted employee reports:', reports);
+        setEmployeeReports(reports);
         setLoadingReports(false);
       } catch (err) {
         console.error('Error fetching employee reports:', err);
@@ -124,19 +137,14 @@ export const EmployeeAssignment = () => {
     setLoading(true);
     setError(null);
     
-    apiService.getAllUsers()
+    apiService.getAllUsers({ role: 'employee' })
       .then(response => {
         // Filter for field workers only
         const fieldWorkers = response.users.filter(user => 
-          user.role === 'Field Worker'
-        ).map(worker => ({
-          ...worker,
-          name: `${worker.firstName} ${worker.lastName}`,
-          workload: Math.floor(Math.random() * 100),
-          performance: Math.floor(Math.random() * 100),
-          reportsAssigned: Math.floor(Math.random() * 20),
-          reportsCompleted: Math.floor(Math.random() * 15)
-        }));
+          user.role === 'employee'
+        );
+        
+        console.log('Refreshed field workers:', fieldWorkers);
         
         setEmployees(fieldWorkers);
         setLoading(false);
@@ -150,13 +158,15 @@ export const EmployeeAssignment = () => {
   
   // Filter employees based on search and filters
   const filteredEmployees = employees.filter(employee => {
+    const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+    
     const matchesSearch = searchTerm === '' || 
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.email.toLowerCase().includes(searchTerm.toLowerCase());
+      fullName.includes(searchTerm.toLowerCase()) ||
+      (employee.email && employee.email.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && employee.active) ||
-      (statusFilter === 'inactive' && !employee.active);
+      (statusFilter === 'active' && employee.isActive) ||
+      (statusFilter === 'inactive' && !employee.isActive);
     
     return matchesSearch && matchesStatus;
   });
@@ -298,10 +308,11 @@ export const EmployeeAssignment = () => {
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-                                {employee.firstName.charAt(0)}{employee.lastName.charAt(0)}
+                                {employee.firstName ? employee.firstName.charAt(0) : ''}
+                                {employee.lastName ? employee.lastName.charAt(0) : ''}
                               </div>
                               <div>
-                                <p className="text-gray-900 font-medium">{employee.name}</p>
+                                <p className="text-gray-900 font-medium">{employee.firstName} {employee.lastName}</p>
                                 <p className="text-sm text-gray-500">{employee.email}</p>
                               </div>
                             </div>
@@ -335,16 +346,17 @@ export const EmployeeAssignment = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-lg">
-                      {selectedEmployee.firstName.charAt(0)}{selectedEmployee.lastName.charAt(0)}
+                      {selectedEmployee.firstName ? selectedEmployee.firstName.charAt(0) : ''}
+                      {selectedEmployee.lastName ? selectedEmployee.lastName.charAt(0) : ''}
                     </div>
                     <div>
-                      <CardTitle>{selectedEmployee.name}</CardTitle>
+                      <CardTitle>{selectedEmployee.firstName} {selectedEmployee.lastName}</CardTitle>
                       <CardDescription>Field Worker</CardDescription>
                     </div>
                   </div>
                   
-                  <Badge variant={selectedEmployee.active ? 'success' : 'outline'}>
-                    {selectedEmployee.active ? 'Active' : 'Inactive'}
+                  <Badge variant={selectedEmployee.isActive ? 'success' : 'outline'}>
+                    {selectedEmployee.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -370,11 +382,11 @@ export const EmployeeAssignment = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <UserCheck className="w-4 h-4 text-gray-400" />
-                      <span>Joined {new Date(selectedEmployee.createdAt).toLocaleDateString()}</span>
+                      <span>Joined {selectedEmployee.createdAt ? new Date(selectedEmployee.createdAt).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
-                      <span>Last active {new Date(selectedEmployee.lastActive || Date.now()).toLocaleDateString()}</span>
+                      <span>Last active {selectedEmployee.lastLogin ? new Date(selectedEmployee.lastLogin).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <BarChart3 className="w-4 h-4 text-gray-400" />
@@ -448,7 +460,7 @@ export const EmployeeAssignment = () => {
                         </TableHeader>
                         <TableBody>
                           {employeeReports.map((report) => (
-                            <TableRow key={report.id}>
+                            <TableRow key={report.id || report._id}>
                               <TableCell>
                                 <div>
                                   <p className="text-gray-900 font-medium">{report.title}</p>
@@ -457,19 +469,28 @@ export const EmployeeAssignment = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  {report.status === 'Resolved' ? (
+                                  {report.status === 'resolved' ? (
                                     <CheckCircle className="w-4 h-4 text-green-500" />
-                                  ) : report.status === 'In Progress' ? (
+                                  ) : report.status === 'in_progress' ? (
                                     <Clock className="w-4 h-4 text-blue-500" />
                                   ) : (
                                     <AlertCircle className="w-4 h-4 text-yellow-500" />
                                   )}
-                                  <span>{report.status}</span>
+                                  <span>
+                                    {report.status === 'resolved' ? 'Resolved' : 
+                                     report.status === 'in_progress' ? 'In Progress' : 
+                                     report.status === 'in_review' ? 'In Review' : 
+                                     report.status === 'assigned' ? 'Assigned' : 
+                                     report.status === 'closed' ? 'Closed' : 'Submitted'}
+                                  </span>
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Badge variant={report.priority === 'High' ? 'destructive' : 'outline'}>
-                                  {report.priority}
+                                <Badge variant={report.priority === 'high' || report.priority === 'critical' ? 'destructive' : 'outline'}>
+                                  {report.priority === 'high' ? 'High' : 
+                                   report.priority === 'medium' ? 'Medium' : 
+                                   report.priority === 'low' ? 'Low' : 
+                                   report.priority === 'critical' ? 'Critical' : report.priority}
                                 </Badge>
                               </TableCell>
                               <TableCell>
@@ -478,7 +499,11 @@ export const EmployeeAssignment = () => {
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <MapPin className="w-4 h-4 text-gray-400" />
-                                  <span className="text-sm text-gray-600 truncate max-w-[120px]">{report.location}</span>
+                                  <span className="text-sm text-gray-600 truncate max-w-[120px]">
+                                    {report.location?.address?.city || 
+                                     report.location?.address?.street || 
+                                     (typeof report.location === 'string' ? report.location : 'Unknown Location')}
+                                  </span>
                                 </div>
                               </TableCell>
                             </TableRow>

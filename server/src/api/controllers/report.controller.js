@@ -204,8 +204,12 @@ exports.getReports = async (req, res, next) => {
     // Build query
     let query = {};
 
-    // Filter by status
-    if (req.query.status) {
+    // For citizens/users, we should not filter by status unless explicitly requested
+    // This ensures they can see all their reports regardless of status
+    const userIsRequestingSpecificStatus = req.query.status && req.user.role === 'user';
+
+    // Filter by status only if specifically requested or not a regular user
+    if (req.query.status && (req.user.role !== 'user' || userIsRequestingSpecificStatus)) {
       query.status = req.query.status;
     }
 

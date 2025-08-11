@@ -42,6 +42,7 @@ export function ReportForm({ onSubmit, onCancel }) {
     location: '',
     coordinates: undefined,
     images: [],
+    imageFiles: [], // Store actual file objects
     priority: 'medium',
     estimatedResolution: ''
   });
@@ -98,12 +99,20 @@ export function ReportForm({ onSubmit, onCancel }) {
           address: {
             description: formData.location || 'Location not specified'
           }
-        },
-        images: formData.images
+        }
       };
       
-      console.log('Submitting report data:', JSON.stringify(reportData, null, 2));
-      onSubmit(reportData);
+      // Include the image files separately for proper processing by App.jsx
+      const imagesToUpload = formData.imageFiles || [];
+      
+      console.log('Submitting report data:', reportData);
+      console.log(`Prepared ${imagesToUpload.length} image files for upload`);
+      
+      // Pass both the report data and image files to parent component
+      onSubmit({
+        ...reportData,
+        imageFiles: imagesToUpload
+      });
     }
   };
 
@@ -112,8 +121,11 @@ export function ReportForm({ onSubmit, onCancel }) {
     if (files) {
       setUploadingImages(true);
       try {
-        // Convert files to base64 for now (in production, you'd upload to a service)
-        const imagePromises = Array.from(files).map(file => {
+        // Store the original file objects for actual upload
+        const fileObjects = Array.from(files);
+        
+        // Convert files to base64 for preview only
+        const imagePromises = fileObjects.map(file => {
           return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
@@ -122,10 +134,23 @@ export function ReportForm({ onSubmit, onCancel }) {
         });
         
         const imageDataUrls = await Promise.all(imagePromises);
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, ...imageDataUrls].slice(0, 5) // Max 5 images
-        }));
+        console.log(`Processed ${imageDataUrls.length} images for preview`);
+        
+        // Limit to 5 images total
+        const maxImages = 5;
+        const currentImagesCount = formData.images.length;
+        const availableSlots = Math.max(0, maxImages - currentImagesCount);
+        
+        if (availableSlots > 0) {
+          const newImageUrls = imageDataUrls.slice(0, availableSlots);
+          const newFileObjects = fileObjects.slice(0, availableSlots);
+          
+          setFormData(prev => ({
+            ...prev,
+            images: [...prev.images, ...newImageUrls],
+            imageFiles: [...prev.imageFiles, ...newFileObjects]
+          }));
+        }
       } catch (error) {
         console.error('Error processing images:', error);
       } finally {
@@ -137,7 +162,8 @@ export function ReportForm({ onSubmit, onCancel }) {
   const removeImage = (index) => {
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images: prev.images.filter((_, i) => i !== index),
+      imageFiles: prev.imageFiles.filter((_, i) => i !== index)
     }));
   };
 

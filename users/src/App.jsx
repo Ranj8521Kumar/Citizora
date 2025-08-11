@@ -133,9 +133,44 @@ export default function App() {
 
   const handleSubmitReport = async (reportData) => {
     try {
-      const response = await apiService.createReport(reportData);
+      // Extract image files for separate upload
+      const imageFiles = reportData.imageFiles || [];
+      
+      // Create a copy of the report data without images for initial submission
+      const reportDataWithoutImages = {...reportData};
+      delete reportDataWithoutImages.imageFiles;
+      
+      console.log('Submitting report without images:', reportDataWithoutImages);
+      
+      // First create the report
+      const response = await apiService.createReport(reportDataWithoutImages);
+      
       // Extract report from response data structure
-      const newReport = response.data?.report || response;
+      const newReport = response.data?.report || response.report || response;
+      const reportId = newReport._id;
+      
+      if (!reportId) {
+        console.error('Failed to get report ID from response:', newReport);
+        throw new Error('Failed to create report: Invalid server response');
+      }
+      
+      console.log('New report created with ID:', reportId);
+      
+      // If there are image files, upload them in a separate call
+      if (imageFiles.length > 0) {
+        console.log(`Uploading ${imageFiles.length} image files for report ${reportId}`);
+        
+        try {
+          // Upload the image files directly
+          await apiService.uploadReportImages(reportId, imageFiles);
+          console.log('Images uploaded successfully');
+        } catch (imageError) {
+          console.error('Failed to upload images:', imageError);
+          // The report was created, but image upload failed
+          setError('Report created, but image upload failed. You can add images later.');
+        }
+      }
+      
       setReports(prev => [newReport, ...prev]);
       setCurrentPage('dashboard');
     } catch (error) {

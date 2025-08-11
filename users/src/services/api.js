@@ -300,26 +300,56 @@ class ApiService {
   }
 
   async uploadReportImages(id, images) {
-    const formData = new FormData();
-    images.forEach((image) => {
-      formData.append('images', image);
-    });
-
-    const url = `${this.baseURL}/reports/${id}/images`;
-    const headers = { 'Authorization': `Bearer ${this.token}` };
+    console.log(`Preparing to upload ${images.length} images for report ${id}`);
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: formData,
+    const formData = new FormData();
+    images.forEach((image, index) => {
+      // For Blob objects from base64 conversion
+      if (image instanceof Blob) {
+        formData.append('images', image, `image-${index}.jpg`);
+        console.log(`Appended Blob image ${index} to form data`);
+      } 
+      // For File objects from direct file input
+      else if (image instanceof File) {
+        formData.append('images', image);
+        console.log(`Appended File image ${index} to form data: ${image.name}`);
+      }
+      // For string URLs (shouldn't happen in this flow, but just in case)
+      else if (typeof image === 'string') {
+        console.warn(`Image ${index} is a string URL, not a file. This may not work correctly.`);
+        // We'll skip this as backend expects multipart file uploads, not URLs
+      }
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
+    try {
+      console.log(`Sending ${images.length} images to ${this.baseURL}/reports/${id}/images`);
+      
+      const url = `${this.baseURL}/reports/${id}/images`;
+      const headers = { 'Authorization': `Bearer ${this.token}` };
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
 
-    return await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Image upload response:', result);
+      return result;
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      throw error;
+    }
+  }
+
+  // Get all comments for a report
+  async getReportComments(reportId) {
+    return await this.request(`/reports/${reportId}/comments`);
   }
 
   // User methods

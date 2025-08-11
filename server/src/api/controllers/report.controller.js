@@ -204,12 +204,8 @@ exports.getReports = async (req, res, next) => {
     // Build query
     let query = {};
 
-    // For citizens/users, we should not filter by status unless explicitly requested
-    // This ensures they can see all their reports regardless of status
-    const userIsRequestingSpecificStatus = req.query.status && req.user.role === 'user';
-
-    // Filter by status only if specifically requested or not a regular user
-    if (req.query.status && (req.user.role !== 'user' || userIsRequestingSpecificStatus)) {
+    // Filter by status
+    if (req.query.status) {
       query.status = req.query.status;
     }
 
@@ -333,14 +329,9 @@ exports.updateReportStatus = async (req, res, next) => {
 
     // Check permissions based on role and status
     if (req.user.role === 'user') {
-      // Users (citizens) can only update their own reports
-      if (report.submittedBy.toString() !== req.user._id.toString()) {
+      // Users can only provide feedback on resolved reports
+      if (status !== 'closed' || report.status !== 'resolved') {
         return next(new ApiError('You do not have permission to update this report status', 403));
-      }
-      
-      // Users can only set certain statuses
-      if (!['closed', 'cancelled', 'canceled'].includes(status)) {
-        return next(new ApiError('You can only update status to closed or cancelled', 400));
       }
     } else if (req.user.role === 'employee') {
       // Employees can only update reports assigned to them
@@ -349,7 +340,7 @@ exports.updateReportStatus = async (req, res, next) => {
       }
 
       // Employees can only change status to in_progress or resolved
-      if (!['in_progress', 'in-progress', 'inprogress', 'resolved', 'completed', 'complete'].includes(status)) {
+      if (!['in_progress', 'resolved'].includes(status)) {
         return next(new ApiError('You can only update status to in_progress or resolved', 400));
       }
     }

@@ -44,10 +44,17 @@ export default function App() {
       setError(null); // Clear any previous errors
       console.log('Loading reports for user:', user);
       
-      // Get data from API
+      // Get data from API - don't show loading indicator for refreshes
+      // to prevent the whole app from re-rendering
+      const currentReports = reports;
+      let showLoadingIndicator = currentReports.length === 0;
+      
       try {
-        // Forcing load screen 
-        setLoading(true);
+        // Only show loading indicator on initial load, not on refreshes
+        if (showLoadingIndicator) {
+          setLoading(true);
+        }
+        
         const reportsData = await apiService.getReports();
         console.log('Reports data received from API:', reportsData);
         
@@ -89,13 +96,45 @@ export default function App() {
           });
         
         console.log('Reports data for Dashboard:', processedReports);
-        setReports(processedReports);
+        
+        // Update reports state without triggering a complete UI refresh
+        setReports(prev => {
+          // If we're adding a new report, it's already in the state from handleSubmitReport
+          // So we need to merge intelligently without duplicating
+          if (prev.length > 0 && processedReports.length > 0) {
+            // Create a map of existing reports by ID
+            const existingReportsMap = new Map(
+              prev.map(report => [report._id, report])
+            );
+            
+            // Update existing reports and add new ones
+            processedReports.forEach(report => {
+              if (report._id && existingReportsMap.has(report._id)) {
+                // Update existing report with new data, preserving any client-side state
+                const existingReport = existingReportsMap.get(report._id);
+                existingReportsMap.set(report._id, { ...existingReport, ...report });
+              } else if (report._id) {
+                // Add new report
+                existingReportsMap.set(report._id, report);
+              }
+            });
+            
+            // Convert map back to array and sort by creation date (newest first)
+            return Array.from(existingReportsMap.values())
+              .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+          }
+          
+          // If no existing reports or complete refresh needed, return new reports
+          return processedReports;
+        });
       } catch (error) {
         console.error('Failed to fetch reports from API:', error);
         setError('Failed to load reports. Please try again later.');
         setReports([]);
       } finally {
-        setLoading(false);
+        if (showLoadingIndicator) {
+          setLoading(false);
+        }
       }
     } catch (error) {
       console.error('Failed to load reports:', error);
@@ -103,7 +142,7 @@ export default function App() {
       // Set empty array on error to prevent filter issues
       setReports([]);
     }
-  }, [user]); // Include only user as dependency
+  }, [user, reports]); // Include user and reports as dependencies
   
   // Load reports when user is authenticated
   useEffect(() => {
@@ -162,8 +201,14 @@ export default function App() {
         
         try {
           // Upload the image files directly
-          await apiService.uploadReportImages(reportId, imageFiles);
-          console.log('Images uploaded successfully');
+          const uploadResult = await apiService.uploadReportImages(reportId, imageFiles);
+          console.log('Images uploaded successfully', uploadResult);
+          
+          // Update the report with image data
+          if (uploadResult && uploadResult.images) {
+            newReport.images = uploadResult.images;
+            console.log('Updated report with uploaded images:', newReport);
+          }
         } catch (imageError) {
           console.error('Failed to upload images:', imageError);
           // The report was created, but image upload failed
@@ -171,6 +216,7 @@ export default function App() {
         }
       }
       
+      // Update the reports state with the new report (including images if uploaded)
       setReports(prev => [newReport, ...prev]);
       setCurrentPage('dashboard');
     } catch (error) {

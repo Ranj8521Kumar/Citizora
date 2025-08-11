@@ -41,8 +41,16 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
           console.log('Images structure:', JSON.stringify(reports[0].images, null, 2));
         }
         
+        // If a report is already selected, update it with the latest data
+        if (selectedReport && selectedReport._id) {
+          const updatedSelectedReport = reports.find(r => r._id === selectedReport._id);
+          if (updatedSelectedReport && JSON.stringify(updatedSelectedReport) !== JSON.stringify(selectedReport)) {
+            console.log('Updating selected report with latest data:', updatedSelectedReport);
+            setSelectedReport(updatedSelectedReport);
+          }
+        } 
         // Always select first report on load if none is selected
-        if (!selectedReport) {
+        else if (!selectedReport) {
           try {
             // Ensure the report object is safe to use as state
             const safeReport = { ...reports[0] };
@@ -101,6 +109,11 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
           (image.urls && (image.urls.regular || image.urls.small || image.urls.thumb));
         if (imageUrl) {
           console.log('Using fallback URL:', imageUrl);
+        } else if (image._id || image.filename) {
+          // If we have an ID but no URL, construct the image URL
+          const imageId = image._id || image.filename;
+          imageUrl = `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
+          console.log('Constructed URL from ID:', imageUrl);
         } else {
           console.log('No valid image URL found in object:', image);
         }

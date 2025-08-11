@@ -340,6 +340,14 @@ class ApiService {
       
       const result = await response.json();
       console.log('Image upload response:', result);
+      
+      // Make sure the response contains an images array
+      if (result && !result.images && result.data && result.data.images) {
+        result.images = result.data.images;
+      } else if (result && !result.images && result.report && result.report.images) {
+        result.images = result.report.images;
+      }
+      
       return result;
     } catch (error) {
       console.error('Error uploading images:', error);

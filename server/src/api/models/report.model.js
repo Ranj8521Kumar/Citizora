@@ -28,7 +28,7 @@ const reportSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['submitted', 'in_review', 'assigned', 'in_progress', 'resolved', 'closed'],
+    enum: ['submitted', 'in_review', 'assigned', 'in_progress', 'in-progress', 'inprogress', 'resolved', 'completed', 'complete', 'closed', 'cancelled', 'canceled', 'pending'],
     default: 'submitted'
   },
   location: {
@@ -69,7 +69,7 @@ const reportSchema = new mongoose.Schema({
   timeline: [{
     status: {
       type: String,
-      enum: ['submitted', 'in_review', 'assigned', 'in_progress', 'resolved', 'closed']
+      enum: ['submitted', 'in_review', 'assigned', 'in_progress', 'in-progress', 'inprogress', 'resolved', 'completed', 'complete', 'closed', 'cancelled', 'canceled', 'pending']
     },
     timestamp: {
       type: Date,
@@ -99,13 +99,30 @@ reportSchema.index({ 'location.coordinates': '2dsphere' });
 
 // Method to add a timeline event
 reportSchema.methods.addTimelineEvent = function(status, comment, userId) {
+  // Normalize status to ensure it matches our schema
+  let normalizedStatus = status;
+  
+  // Map status from one format to another if needed
+  if (status === 'in-progress' || status === 'inprogress') {
+    normalizedStatus = 'in_progress';
+  } else if (status === 'complete' || status === 'completed') {
+    normalizedStatus = 'resolved';
+  } else if (status === 'canceled' || status === 'cancelled') {
+    normalizedStatus = 'closed';
+  }
+  
+  // Add the timeline event
   this.timeline.push({
-    status,
+    status: normalizedStatus,
     comment,
     updatedBy: userId,
     timestamp: new Date()
   });
-  this.status = status;
+  
+  // Update the report status
+  this.status = normalizedStatus;
+  
+  // Save the changes
   return this.save();
 };
 

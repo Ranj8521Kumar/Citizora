@@ -333,9 +333,14 @@ exports.updateReportStatus = async (req, res, next) => {
 
     // Check permissions based on role and status
     if (req.user.role === 'user') {
-      // Users can only provide feedback on resolved reports
-      if (status !== 'closed' || report.status !== 'resolved') {
+      // Users (citizens) can only update their own reports
+      if (report.submittedBy.toString() !== req.user._id.toString()) {
         return next(new ApiError('You do not have permission to update this report status', 403));
+      }
+      
+      // Users can only set certain statuses
+      if (!['closed', 'cancelled', 'canceled'].includes(status)) {
+        return next(new ApiError('You can only update status to closed or cancelled', 400));
       }
     } else if (req.user.role === 'employee') {
       // Employees can only update reports assigned to them
@@ -344,7 +349,7 @@ exports.updateReportStatus = async (req, res, next) => {
       }
 
       // Employees can only change status to in_progress or resolved
-      if (!['in_progress', 'resolved'].includes(status)) {
+      if (!['in_progress', 'in-progress', 'inprogress', 'resolved', 'completed', 'complete'].includes(status)) {
         return next(new ApiError('You can only update status to in_progress or resolved', 400));
       }
     }

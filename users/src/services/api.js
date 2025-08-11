@@ -180,11 +180,15 @@ class ApiService {
         if (!report.images) report.images = [];
         if (!report.progressImages) report.progressImages = [];
         
+        // Debugging images
+        console.log(`Report ${report._id} images:`, report.images);
+        
         // Process progress updates and timeline entries
         if (report.progressUpdates && Array.isArray(report.progressUpdates)) {
           // Extract images from progress updates and add them to progressImages
           report.progressUpdates.forEach(update => {
             if (update.images && Array.isArray(update.images)) {
+              console.log(`Adding progress images from update:`, update.images);
               report.progressImages.push(...update.images);
             }
           });

@@ -70,6 +70,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
 
   // Helper function to render images consistently
   const renderImage = (image, index, type = 'standard', size = 'medium') => {
+    console.log(`renderImage called for ${type} image ${index}:`, image);
     let imageUrl = '';
     
     // Determine image size class
@@ -78,25 +79,40 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
     // Handle different image formats
     if (typeof image === 'string') {
       imageUrl = image;
+      console.log('Image is a string URL:', imageUrl);
     } else if (image && typeof image === 'object') {
-      // Cloudinary URLs are preferred
-      imageUrl = image.secure_url || image.url;
+      console.log('Image is an object with keys:', Object.keys(image));
       
-      // Backend URL construction
-      if (!imageUrl && (image._id || image.filename)) {
-        const imageId = image._id || image.filename;
-        imageUrl = `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
+      // Match the backend model structure where images have a url property
+      if (image.url) {
+        imageUrl = image.url;
+        console.log('Using image URL from backend:', imageUrl);
+      }
+      // Cloudinary URLs are preferred as fallback
+      else if (image.secure_url) {
+        imageUrl = image.secure_url;
+        console.log('Using Cloudinary secure URL:', imageUrl);
       }
       
       // Fallbacks
       if (!imageUrl) {
+        console.log('No primary URL found, trying fallbacks');
         imageUrl = image.path || image.src || 
           (image.urls && (image.urls.regular || image.urls.small || image.urls.thumb));
+        if (imageUrl) {
+          console.log('Using fallback URL:', imageUrl);
+        } else {
+          console.log('No valid image URL found in object:', image);
+        }
       }
+    } else {
+      console.log('Invalid image format received:', typeof image, image);
     }
     
     const borderClass = type === 'progress' ? 'border-green-200' : 
                         type === 'status' ? 'border-blue-200' : 'border-gray-200';
+    
+    console.log(`Rendering ${type} image with URL:`, imageUrl);
     
     return (
       <div key={`${type}-${index}`} className="relative">
@@ -634,14 +650,17 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                         Photos ({(selectedReport.images?.length || 0) + (selectedReport.progressImages?.length || 0)})
                       </h4>
                       
+                      {console.log('Report images:', JSON.stringify(selectedReport.images, null, 2))}
+                      
                       {/* Original report images */}
                       {selectedReport.images && selectedReport.images.length > 0 && (
                         <>
                           <p className="text-xs text-muted-foreground mb-1">Your submitted photos:</p>
                           <div className="grid grid-cols-2 gap-2 mb-4">
-                            {selectedReport.images.map((image, index) => 
-                              renderImage(image, index, 'standard', 'medium')
-                            )}
+                            {selectedReport.images.map((image, index) => {
+                              console.log(`Processing image ${index}:`, image);
+                              return renderImage(image, index, 'standard', 'medium');
+                            })}
                           </div>
                         </>
                       )}
@@ -650,10 +669,12 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                       {selectedReport.progressImages && selectedReport.progressImages.length > 0 && (
                         <>
                           <p className="text-xs text-muted-foreground mb-1">Progress photos from field workers:</p>
+                          {console.log('Progress images:', JSON.stringify(selectedReport.progressImages, null, 2))}
                           <div className="grid grid-cols-2 gap-2">
-                            {selectedReport.progressImages.map((image, index) => 
-                              renderImage(image, index, 'progress', 'medium')
-                            )}
+                            {selectedReport.progressImages.map((image, index) => {
+                              console.log(`Processing progress image ${index}:`, image);
+                              return renderImage(image, index, 'progress', 'medium');
+                            })}
                           </div>
                         </>
                       )}

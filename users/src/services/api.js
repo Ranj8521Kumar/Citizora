@@ -180,7 +180,7 @@ class ApiService {
         if (!report.images) report.images = [];
         if (!report.progressImages) report.progressImages = [];
         
-        // If we have progress images from field workers, make sure they're properly processed
+        // Process progress updates and timeline entries
         if (report.progressUpdates && Array.isArray(report.progressUpdates)) {
           // Extract images from progress updates and add them to progressImages
           report.progressUpdates.forEach(update => {
@@ -189,6 +189,73 @@ class ApiService {
             }
           });
         }
+        
+        // Normalize and enhance timeline data
+        let timeline = [];
+        
+        // First check for progressUpdates (field worker updates)
+        if (report.progressUpdates && Array.isArray(report.progressUpdates)) {
+          report.progressUpdates.forEach(update => {
+            timeline.push({
+              type: 'progress',
+              status: update.status || 'in_progress',
+              timestamp: update.timestamp || update.date || update.createdAt,
+              comment: update.comment || update.description || 'Progress update',
+              images: update.images || [],
+              updatedBy: update.updatedBy || 'Field Worker'
+            });
+          });
+        }
+        
+        // Then check for statusUpdates
+        if (report.statusUpdates && Array.isArray(report.statusUpdates)) {
+          report.statusUpdates.forEach(update => {
+            timeline.push({
+              type: 'status',
+              status: update.status || report.status,
+              timestamp: update.timestamp || update.date || update.createdAt,
+              comment: update.comment || update.description || `Status changed to ${update.status || report.status}`,
+              images: update.images || [],
+              updatedBy: update.updatedBy || 'System'
+            });
+          });
+        }
+        
+        // Then check for general timeline
+        if (report.timeline && Array.isArray(report.timeline)) {
+          report.timeline.forEach(entry => {
+            timeline.push({
+              type: entry.type || 'update',
+              status: entry.status || report.status,
+              timestamp: entry.timestamp || entry.date || entry.createdAt,
+              comment: entry.comment || entry.description || 'Status update',
+              images: entry.images || [],
+              updatedBy: entry.updatedBy || 'System'
+            });
+          });
+        }
+        
+        // Sort timeline by timestamp
+        timeline.sort((a, b) => {
+          const dateA = new Date(a.timestamp || 0);
+          const dateB = new Date(b.timestamp || 0);
+          return dateA - dateB;
+        });
+        
+        // Add initial submission entry if it doesn't exist
+        if (timeline.length === 0 || (timeline[0]?.timestamp && new Date(timeline[0].timestamp) > new Date(report.createdAt || report.date))) {
+          timeline.unshift({
+            type: 'submission',
+            status: 'submitted',
+            timestamp: report.createdAt || report.date,
+            comment: 'Report submitted',
+            images: report.images || [],
+            updatedBy: report.createdBy || report.author || 'Citizen'
+          });
+        }
+        
+        // Assign normalized timeline to the report
+        report.timeline = timeline;
         
         return report;
       });

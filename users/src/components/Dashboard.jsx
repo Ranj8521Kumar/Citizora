@@ -68,7 +68,63 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
     }
   }, [reports, selectedReport]);
 
-  // Normalize report statuses for consistent handling
+  // Helper function to render images consistently
+  const renderImage = (image, index, type = 'standard', size = 'medium') => {
+    let imageUrl = '';
+    
+    // Determine image size class
+    const sizeClass = size === 'small' ? 'h-16' : size === 'large' ? 'h-32' : 'h-20';
+    
+    // Handle different image formats
+    if (typeof image === 'string') {
+      imageUrl = image;
+    } else if (image && typeof image === 'object') {
+      // Cloudinary URLs are preferred
+      imageUrl = image.secure_url || image.url;
+      
+      // Backend URL construction
+      if (!imageUrl && (image._id || image.filename)) {
+        const imageId = image._id || image.filename;
+        imageUrl = `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
+      }
+      
+      // Fallbacks
+      if (!imageUrl) {
+        imageUrl = image.path || image.src || 
+          (image.urls && (image.urls.regular || image.urls.small || image.urls.thumb));
+      }
+    }
+    
+    const borderClass = type === 'progress' ? 'border-green-200' : 
+                        type === 'status' ? 'border-blue-200' : 'border-gray-200';
+    
+    return (
+      <div key={`${type}-${index}`} className="relative">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={`${type === 'progress' ? 'Progress' : type === 'status' ? 'Status' : ''} photo ${index + 1}`}
+            className={`w-full ${sizeClass} object-cover rounded border ${borderClass}`}
+            onError={(e) => {
+              console.error(`Failed to load ${type} image:`, imageUrl);
+              e.target.src = 'https://placehold.co/400x300?text=Image+Not+Found';
+            }}
+            onClick={() => window.open(imageUrl, '_blank')}
+          />
+        ) : (
+          <div className={`w-full ${sizeClass} bg-gray-100 flex items-center justify-center rounded border ${borderClass}`}>
+            <span className="text-xs text-gray-500">No image</span>
+          </div>
+        )}
+        {(image.uploadedAt || image.timestamp || image.created_at) && (
+          <div className={`absolute bottom-0 right-0 ${type === 'progress' ? 'bg-green-800/70' : type === 'status' ? 'bg-blue-800/70' : 'bg-black/70'} text-white text-xs px-1 rounded-tl`}>
+            {formatDate(image.uploadedAt || image.timestamp || image.created_at)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Normalize report statuses for consistent handling
   const normalizedReports = Array.isArray(reports) ? reports.map(report => {
     // Skip if report is null or undefined
@@ -136,6 +192,22 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
     resolved: normalizedReports.filter(r => r.status === 'resolved').length,
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Date/time not available';
+    try {
+      return new Date(dateString).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return 'Date/time not available: ' + error.message;
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'submitted':
@@ -186,21 +258,6 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
         month: 'short',
         day: 'numeric',
         year: 'numeric'
-      });
-    } catch (error) {
-      return 'Date not available: ' + error.message;
-    }
-  };
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return 'Date not available';
-    try {
-      return new Date(dateString).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
       });
     } catch (error) {
       return 'Date not available: ' + error.message;
@@ -582,53 +639,11 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                         <>
                           <p className="text-xs text-muted-foreground mb-1">Your submitted photos:</p>
                           <div className="grid grid-cols-2 gap-2 mb-4">
-                            {selectedReport.images.map((image, index) => {
-                              console.log(`Rendering citizen image ${index}:`, image);
-                              let imageUrl = '';
-                              
-                              // Handle different image formats
-                              if (typeof image === 'string') {
-                                imageUrl = image;
-                              } else if (image && typeof image === 'object') {
-                                // Check for various url properties the backend might return
-                                if (image._id || image.filename) {
-                                  const imageId = image._id || image.filename;
-                                  imageUrl = `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
-                                } else {
-                                  // Try to get URL from standard properties
-                                  imageUrl = image.secure_url || image.url || image.path || image.src ||
-                                    (image.urls && (image.urls.regular || image.urls.small || image.urls.thumb));
-                                }
-                              }
-                              
-                              return (
-                                <div key={`citizen-${index}`} className="relative">
-                                  {imageUrl ? (
-                                    <img
-                                      src={imageUrl}
-                                      alt={`Your photo ${index + 1}`}
-                                      className="w-full h-20 object-cover rounded border"
-                                      onError={(e) => {
-                                        console.error('Failed to load image:', imageUrl);
-                                        e.target.src = 'https://placehold.co/400x300?text=Image+Not+Found';
-                                      }}
-                                      onClick={() => window.open(imageUrl, '_blank')}
-                                    />
-                                  ) : (
-                                <div className="w-full h-20 bg-gray-100 flex items-center justify-center rounded border">
-                                  <span className="text-xs text-gray-500">Invalid image</span>
-                                </div>
-                              )}
-                              {(image.uploadedAt || image.timestamp) && (
-                                <div className="absolute bottom-0 right-0 bg-black/70 text-white text-xs px-1 rounded-tl">
-                                  {formatDate(image.uploadedAt || image.timestamp)}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      </>
+                            {selectedReport.images.map((image, index) => 
+                              renderImage(image, index, 'standard', 'medium')
+                            )}
+                          </div>
+                        </>
                       )}
                       
                       {/* Field worker progress images */}
@@ -636,56 +651,9 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                         <>
                           <p className="text-xs text-muted-foreground mb-1">Progress photos from field workers:</p>
                           <div className="grid grid-cols-2 gap-2">
-                            {selectedReport.progressImages.map((image, index) => {
-                              console.log(`Rendering field worker image ${index}:`, image);
-                              let imageUrl = '';
-                              
-                              // Handle different image formats
-                              if (typeof image === 'string') {
-                                imageUrl = image;
-                              } else if (image && typeof image === 'object') {
-                                // Cloudinary URLs are preferred
-                                imageUrl = image.secure_url || image.url;
-                                
-                                // Backend URL construction
-                                if (!imageUrl && (image._id || image.filename)) {
-                                  const imageId = image._id || image.filename;
-                                  imageUrl = `https://civic-connect-backend-aq2a.onrender.com/api/images/${imageId}`;
-                                }
-                                
-                                // Fallbacks
-                                if (!imageUrl) {
-                                  imageUrl = image.path || image.src || 
-                                    (image.urls && (image.urls.regular || image.urls.small || image.urls.thumb));
-                                }
-                              }
-                              
-                              return (
-                                <div key={`progress-${index}`} className="relative">
-                                  {imageUrl ? (
-                                    <img
-                                      src={imageUrl}
-                                      alt={`Progress photo ${index + 1}`}
-                                      className="w-full h-20 object-cover rounded border border-green-200"
-                                      onError={(e) => {
-                                        console.error('Failed to load progress image:', imageUrl);
-                                        e.target.src = 'https://placehold.co/400x300?text=Image+Not+Found';
-                                      }}
-                                      onClick={() => window.open(imageUrl, '_blank')}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-20 bg-gray-100 flex items-center justify-center rounded border">
-                                      <span className="text-xs text-gray-500">Invalid image</span>
-                                    </div>
-                                  )}
-                                  {(image.uploadedAt || image.timestamp || image.created_at) && (
-                                    <div className="absolute bottom-0 right-0 bg-green-800/70 text-white text-xs px-1 rounded-tl">
-                                      {formatDate(image.uploadedAt || image.timestamp || image.created_at)}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                            {selectedReport.progressImages.map((image, index) => 
+                              renderImage(image, index, 'progress', 'medium')
+                            )}
                           </div>
                         </>
                       )}
@@ -710,21 +678,59 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                   
                   <div className="pt-4 border-t">
                     <h4 className="font-medium mb-2">Status Timeline</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full"></div>
-                        <span className="text-muted-foreground">
-                          Submitted on {formatDate(selectedReport.createdAt || selectedReport.date)}
-                        </span>
-                      </div>
-                      {selectedReport.status !== 'submitted' && (selectedReport.updatedAt || selectedReport.lastUpdated) && (
+                    <div className="space-y-4 text-sm">
+                      {/* Basic timeline entries */}
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-accent rounded-full"></div>
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
                           <span className="text-muted-foreground">
-                            Updated on {formatDate(selectedReport.updatedAt || selectedReport.lastUpdated)}
+                            Submitted on {formatDate(selectedReport.createdAt || selectedReport.date)}
                           </span>
                         </div>
-                      )}
+                        
+                        {/* Show detailed timeline from progressUpdates if available */}
+                        {selectedReport.timeline && selectedReport.timeline.length > 0 ? (
+                          selectedReport.timeline.map((entry, index) => (
+                            <div key={`timeline-${index}`} className="ml-4 border-l border-gray-200 pl-4 pb-4 last:pb-0">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-accent rounded-full -ml-5"></div>
+                                  <span className="font-medium">
+                                    Status changed to: {entry.status?.replace('_', ' ').toUpperCase()}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                  {formatDateTime(entry.timestamp || entry.date)}
+                                </span>
+                                {entry.comment && (
+                                  <p className="text-sm mt-1 ml-2 text-gray-600">
+                                    {entry.comment}
+                                  </p>
+                                )}
+                                
+                                {/* Show images associated with this timeline entry */}
+                                {entry.images && entry.images.length > 0 && (
+                                  <div className="mt-2 ml-2">
+                                    <p className="text-xs text-muted-foreground mb-1">Status update photos:</p>
+                                    <div className="grid grid-cols-2 gap-2 mt-1">
+                                      {entry.images.map((image, imgIdx) => 
+                                        renderImage(image, imgIdx, 'status', 'small')
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : selectedReport.status !== 'submitted' && (selectedReport.updatedAt || selectedReport.lastUpdated) && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-accent rounded-full"></div>
+                            <span className="text-muted-foreground">
+                              Updated to {selectedReport.status.replace('_', ' ')} on {formatDate(selectedReport.updatedAt || selectedReport.lastUpdated)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

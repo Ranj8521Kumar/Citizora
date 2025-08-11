@@ -155,7 +155,7 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
         id: tempPhotoId,
         url: photoDataUrl,
         timestamp: new Date().toISOString(),
-        reportId: report.id,
+        reportId: report._id || report.id,
         uploading: true
       };
       
@@ -166,11 +166,19 @@ export function ReportDetail({ report, onStatusUpdate, onBack }) {
       const response = await fetch(photoDataUrl);
       const blob = await response.blob();
       
+      // Get the report ID, ensuring we use _id if available
+      const reportId = report._id || report.id;
+      
       // Create form data for upload
       const formData = new FormData();
       formData.append('images', blob, `photo_${tempPhotoId}.jpg`);
-      formData.append('reportId', report.id);
+      formData.append('reportId', reportId);
       formData.append('description', 'Photo taken during field work');
+      
+      // Add metadata to ensure photo is properly linked to the report
+      formData.append('reportTitle', report.title || 'Field Report');
+      formData.append('photographer', 'Field Worker');
+      formData.append('showToUser', 'true'); // Ensure citizen can see this photo
       
       // Determine upload type based on report status
       let uploadType = 'progress';

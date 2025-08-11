@@ -140,9 +140,12 @@ class ApiService {
   async getReports(filters = {}) {
     try {
       const queryParams = new URLSearchParams(filters).toString();
-      const endpoint = queryParams ? `/reports?${queryParams}` : '/reports';
+      // Add includeImages=true parameter to ensure we get all images including those from field workers
+      const endpointWithImages = queryParams 
+        ? `/reports?${queryParams}&includeImages=true` 
+        : '/reports?includeImages=true';
       
-      const response = await this.request(endpoint);
+      const response = await this.request(endpointWithImages);
       
       console.log('API getReports response:', response);
       
@@ -171,7 +174,26 @@ class ApiService {
         reports = response.data;
       }
       
-      console.log('Extracted reports:', reports);
+      // Process each report to ensure images are properly formatted
+      reports = reports.map(report => {
+        // Ensure report has both regular images and progressImages arrays
+        if (!report.images) report.images = [];
+        if (!report.progressImages) report.progressImages = [];
+        
+        // If we have progress images from field workers, make sure they're properly processed
+        if (report.progressUpdates && Array.isArray(report.progressUpdates)) {
+          // Extract images from progress updates and add them to progressImages
+          report.progressUpdates.forEach(update => {
+            if (update.images && Array.isArray(update.images)) {
+              report.progressImages.push(...update.images);
+            }
+          });
+        }
+        
+        return report;
+      });
+      
+      console.log('Extracted reports with images:', reports);
       return reports;
     } catch (error) {
       console.error('Failed to fetch reports from API:', error.message);

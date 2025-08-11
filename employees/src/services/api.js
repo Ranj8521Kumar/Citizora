@@ -232,6 +232,16 @@ export const updateReportStatus = async (reportId, status, comment = '') => {
  * @returns {Promise} Promise that resolves to the upload response
  */
 export const uploadImages = async (type, formData) => {
+  // Make sure cloudinary=true is specified to use Cloudinary for image uploads
+  formData.append('cloudinary', 'true');
+  
+  // Add metadata to ensure the image is linked to the report
+  if (!formData.has('uploadType')) {
+    formData.append('uploadType', 'fieldworker_photo');
+  }
+  
+  console.log(`Uploading ${type} images to Cloudinary via API`);
+  
   const response = await fetch(`${API_BASE_URL}/fieldworker/images/${type}`, {
     method: 'POST',
     headers: getHeaders(false), // Don't include Content-Type, let the browser set it for FormData

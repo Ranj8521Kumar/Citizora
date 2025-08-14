@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import apiService from '../services/api';
+import { MapComponent } from './MapComponent';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -53,10 +53,11 @@ export function ReportForm({ onSubmit, onCancel }) {
     },
     images: [],
     imageFiles: [], // Store actual file objects
-    priority: 'medium',
+    priority: 'medium', // Default to medium priority (matches server default)
     estimatedResolution: ''
   });
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const steps = ['category', 'details', 'location', 'images', 'review'];
   const currentStepIndex = steps.indexOf(currentStep);
@@ -93,45 +94,55 @@ export function ReportForm({ onSubmit, onCancel }) {
     }
   };
 
-  const handleSubmit = () => {
-    if (canProceed()) {
-      // Structure the data according to backend requirements
-      const reportData = {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        priority: formData.priority,
-        location: {
-          type: 'Point',
-          coordinates: formData.coordinates 
-            ? [formData.coordinates.lng, formData.coordinates.lat] // Convert to [longitude, latitude] array
-            : [0, 0], // Default coordinates if none provided
-          address: {
-            description: formData.location || 'Location not specified',
-            fullAddress: formData.fullAddress, // Include the full address if available
-            // Include structured address details if available
-            street: formData.addressDetails?.street || '',
-            houseNumber: formData.addressDetails?.houseNumber || '',
-            neighborhood: formData.addressDetails?.neighborhood || '',
-            city: formData.addressDetails?.city || '',
-            state: formData.addressDetails?.state || '',
-            country: formData.addressDetails?.country || '',
-            postcode: formData.addressDetails?.postcode || ''
+  const handleSubmit = async () => {
+    if (canProceed() && !isSubmitting) {
+      try {
+        // Set submitting state to true to show loading indicator
+        setIsSubmitting(true);
+        
+        // Structure the data according to backend requirements
+        const reportData = {
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          priority: formData.priority,
+          location: {
+            type: 'Point',
+            coordinates: formData.coordinates 
+              ? [formData.coordinates.lng, formData.coordinates.lat] // Convert to [longitude, latitude] array
+              : [0, 0], // Default coordinates if none provided
+            address: {
+              description: formData.location || 'Location not specified',
+              fullAddress: formData.fullAddress, // Include the full address if available
+              // Include structured address details if available
+              street: formData.addressDetails?.street || '',
+              houseNumber: formData.addressDetails?.houseNumber || '',
+              neighborhood: formData.addressDetails?.neighborhood || '',
+              city: formData.addressDetails?.city || '',
+              state: formData.addressDetails?.state || '',
+              country: formData.addressDetails?.country || '',
+              postcode: formData.addressDetails?.postcode || ''
+            }
           }
-        }
-      };
-      
-      // Include the image files separately for proper processing by App.jsx
-      const imagesToUpload = formData.imageFiles || [];
-      
-      console.log('Submitting report data:', reportData);
-      console.log(`Prepared ${imagesToUpload.length} image files for upload`);
-      
-      // Pass both the report data and image files to parent component
-      onSubmit({
-        ...reportData,
-        imageFiles: imagesToUpload
-      });
+        };
+        
+        // Include the image files separately for proper processing by App.jsx
+        const imagesToUpload = formData.imageFiles || [];
+        
+        console.log('Submitting report data:', reportData);
+        console.log(`Prepared ${imagesToUpload.length} image files for upload`);
+        
+        // Pass both the report data and image files to parent component
+        await onSubmit({
+          ...reportData,
+          imageFiles: imagesToUpload
+        });
+      } catch (error) {
+        console.error('Error submitting report:', error);
+      } finally {
+        // Reset submitting state whether successful or not
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -195,6 +206,18 @@ export function ReportForm({ onSubmit, onCancel }) {
           // Store coordinates for database
           const coordinates = { lat: latitude, lng: longitude };
           
+          // Format coordinates for display as fallback
+          const formattedLat = latitude.toFixed(6);
+          const formattedLng = longitude.toFixed(6);
+          const coordsString = `${formattedLat}, ${formattedLng}`;
+          
+          // Show temporary coordinates display while geocoding
+          setFormData(prev => ({
+            ...prev,
+            coordinates: coordinates,
+            location: `Location (${coordsString})`, // Temporary display while geocoding is in progress
+          }));
+          
           // Get human-readable address using reverse geocoding
           reverseGeocode(latitude, longitude)
             .then(address => {
@@ -234,18 +257,21 @@ export function ReportForm({ onSubmit, onCancel }) {
             })
             .catch(error => {
               console.error('Error getting address from coordinates:', error);
-              // Fallback to a more user-friendly format if geocoding fails
+              // Fallback to coordinates if geocoding fails
               setFormData(prev => ({
                 ...prev,
                 coordinates: coordinates,
-                location: "Detected location" // Fallback text if geocoding fails
+                location: `Location (${coordsString})` // Fallback to coordinates if geocoding fails
               }));
             });
         },
         (error) => {
           console.error('Error detecting location:', error);
+          alert('Could not detect your location. Please check your device settings and try again.');
         }
       );
+    } else {
+      alert('Geolocation is not supported by your browser. Please enter your location manually.');
     }
   };
   
@@ -253,11 +279,27 @@ export function ReportForm({ onSubmit, onCancel }) {
   const reverseGeocode = async (latitude, longitude) => {
     try {
       console.log('Reverse geocoding coordinates:', latitude, longitude);
+      
+      // Format coordinates with limited decimal places for fallback display
+      const formattedLat = latitude.toFixed(6);
+      const formattedLng = longitude.toFixed(6);
+      const coordsString = `${formattedLat}, ${formattedLng}`;
+      
       // Use Nominatim OpenStreetMap service for geocoding (free, no API key required)
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
-      const data = await response.json();
       
+      if (!response.ok) {
+        console.warn(`Geocoding service responded with status: ${response.status}`);
+        return `Location (${coordsString})`;
+      }
+      
+      const data = await response.json();
       console.log('Geocoding response:', data);
+      
+      // If we have a display name but no address, use the display name
+      if (!data.address && data.display_name) {
+        return data.display_name.split(',').slice(0, 3).join(',').trim();
+      }
       
       if (data && data.address) {
         // Store the full data for future use
@@ -298,27 +340,41 @@ export function ReportForm({ onSubmit, onCancel }) {
           addressComponents.push(fullAddressData.town);
         } else if (fullAddressData.village) {
           addressComponents.push(fullAddressData.village);
+        } else if (fullAddressData.county) {
+          addressComponents.push(fullAddressData.county);
+        }
+        
+        // Add state and country for more context if needed
+        if (fullAddressData.state && addressComponents.length < 3) {
+          addressComponents.push(fullAddressData.state);
+        }
+        if (fullAddressData.country && addressComponents.length < 2) {
+          addressComponents.push(fullAddressData.country);
         }
         
         // Format the address as a readable string
-        let formattedAddress = "Detected location";
         if (addressComponents.length > 0) {
-          formattedAddress = addressComponents.join(', ');
+          const formattedAddress = addressComponents.join(', ');
           console.log('Formatted address:', formattedAddress);
-        } else {
-          // If we don't have any good components, use a shortened version of display_name
-          formattedAddress = data.display_name.split(',').slice(0, 3).join(',').trim();
-          console.log('Using shortened display name:', formattedAddress);
+          return formattedAddress;
         }
         
-        return formattedAddress;
+        // If we don't have any good components, use a shortened version of display_name
+        if (data.display_name) {
+          const shortAddress = data.display_name.split(',').slice(0, 3).join(',').trim();
+          console.log('Using shortened display name:', shortAddress);
+          return shortAddress;
+        }
       }
       
-      // Fallback if no good data
-      return "Detected location";
+      // Last resort fallback if no usable data from the geocoding service
+      return `Location (${coordsString})`;
     } catch (error) {
       console.error('Geocoding failed:', error);
-      return "Detected location";
+      // Format coordinates for display as fallback
+      const formattedLat = latitude.toFixed(6);
+      const formattedLng = longitude.toFixed(6);
+      return `Location (${formattedLat}, ${formattedLng})`;
     }
   };
 
@@ -432,7 +488,7 @@ export function ReportForm({ onSubmit, onCancel }) {
                         <SelectItem value="low">Low - Minor inconvenience</SelectItem>
                         <SelectItem value="medium">Medium - Noticeable issue</SelectItem>
                         <SelectItem value="high">High - Significant problem</SelectItem>
-                        <SelectItem value="urgent">Urgent - Safety concern</SelectItem>
+                        <SelectItem value="critical">Urgent - Safety concern</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -470,7 +526,7 @@ export function ReportForm({ onSubmit, onCancel }) {
                     />
                   </div>
                   
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 mb-4">
                     <Button
                       type="button"
                       variant="outline"
@@ -485,13 +541,77 @@ export function ReportForm({ onSubmit, onCancel }) {
                     )}
                   </div>
                   
-                  {/* Mock Map Placeholder */}
-                  <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-border">
-                    <div className="text-center text-muted-foreground">
-                      <MapPin className="w-12 h-12 mx-auto mb-2" />
-                      <p>Interactive map would appear here</p>
-                      <p className="text-sm">Click to pinpoint exact location</p>
-                    </div>
+                  {/* Interactive Map */}
+                  <div className="w-full">
+                    <MapComponent 
+                      initialLocation={formData.coordinates}
+                      onLocationSelected={(coordinates) => {
+                        // When a location is selected on the map, update the coordinates
+                        // and use reverse geocoding to get the address
+                        const { lat, lng } = coordinates;
+                        
+                        // Format coordinates for display as fallback
+                        const formattedLat = lat.toFixed(6);
+                        const formattedLng = lng.toFixed(6);
+                        const coordsString = `${formattedLat}, ${formattedLng}`;
+                        
+                        // Store coordinates and show temporary display while geocoding is in progress
+                        setFormData(prev => ({
+                          ...prev,
+                          coordinates: coordinates,
+                          location: `Location (${coordsString})` // Temporary display
+                        }));
+                        
+                        // Get human-readable address using reverse geocoding
+                        reverseGeocode(lat, lng)
+                          .then(address => {
+                            // Fetch the full address details for richer data
+                            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+                              .then(response => {
+                                if (!response.ok) {
+                                  throw new Error(`Geocoding service responded with status: ${response.status}`);
+                                }
+                                return response.json();
+                              })
+                              .then(data => {
+                                // Create an address object with structured data
+                                const addressData = data.address || {};
+                                
+                                setFormData(prev => ({
+                                  ...prev,
+                                  location: address, // Human-readable location string
+                                  fullAddress: address, // For backward compatibility
+                                  addressDetails: {
+                                    street: addressData.road || addressData.pedestrian || '',
+                                    houseNumber: addressData.house_number || '',
+                                    neighborhood: addressData.suburb || addressData.neighbourhood || addressData.quarter || '',
+                                    city: addressData.city || addressData.town || addressData.village || '',
+                                    state: addressData.state || addressData.county || '',
+                                    country: addressData.country || '',
+                                    postcode: addressData.postcode || ''
+                                  }
+                                }));
+                              })
+                              .catch(error => {
+                                console.error('Error fetching detailed address:', error);
+                                // Continue with basic address
+                                setFormData(prev => ({
+                                  ...prev,
+                                  location: address,
+                                  fullAddress: address
+                                }));
+                              });
+                          })
+                          .catch(error => {
+                            console.error('Error getting address from coordinates:', error);
+                            // Fallback to coordinates if geocoding fails
+                            setFormData(prev => ({
+                              ...prev,
+                              location: `Location (${coordsString})` // Use coordinates as fallback
+                            }));
+                          });
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -588,11 +708,11 @@ export function ReportForm({ onSubmit, onCancel }) {
                     <p className="font-medium">{formData.title}</p>
                     <p className="text-muted-foreground mt-1">{formData.description}</p>
                     <Badge className="mt-2" variant={
-                      formData.priority === 'urgent' ? 'destructive' :
+                      formData.priority === 'critical' ? 'destructive' :
                       formData.priority === 'high' ? 'default' :
                       formData.priority === 'medium' ? 'secondary' : 'outline'
                     }>
-                      {formData.priority} priority
+                      {formData.priority === 'critical' ? 'urgent' : formData.priority} priority
                     </Badge>
                   </div>
                   
@@ -640,10 +760,20 @@ export function ReportForm({ onSubmit, onCancel }) {
           {currentStepIndex === steps.length - 1 ? (
             <Button
               onClick={handleSubmit}
-              disabled={!canProceed()}
+              disabled={!canProceed() || isSubmitting}
               className="flex items-center space-x-2"
             >
-              <span>Submit Report</span>
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <span>Submit Report</span>
+              )}
             </Button>
           ) : (
             <Button

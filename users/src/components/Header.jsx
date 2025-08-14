@@ -168,7 +168,7 @@ export function Header({ user, currentPage, onNavigate, onLogin, onLogout }) {
                 {user ? (
                   <div className="space-y-2">
                     <div className="px-3 py-2 text-sm text-muted-foreground">
-                      Welcome, {user.name}
+                      Welcome, {user.firstName}
                     </div>
                     <button
                       onClick={() => {

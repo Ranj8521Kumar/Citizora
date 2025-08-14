@@ -19,11 +19,16 @@ import {
   Eye,
   Calendar
 } from 'lucide-react';
-import { DebugReportsAnalyzer } from '../utils/DebugReportsAnalyzer';
 
 // Helper function to format a structured address
-const formatStructuredAddress = (address) => {
+const formatStructuredAddress = (address, locationData) => {
   if (!address) return 'Location not specified';
+  
+  // If description is "Detected location" but we have coordinates, use them instead
+  if (address.description === "Detected location" && locationData?.coordinates) {
+    const [lng, lat] = locationData.coordinates;
+    return `Location (${lat.toFixed(6)}, ${lng.toFixed(6)})`;
+  }
   
   // Build address components in order of specificity
   const parts = [];
@@ -52,8 +57,17 @@ const formatStructuredAddress = (address) => {
   }
   
   // Fallback to description if we couldn't build anything useful
-  if (parts.length === 0 && address.description) {
-    return address.description;
+  if (parts.length === 0) {
+    // Use description if available and not the generic "Detected location"
+    if (address.description && address.description !== "Detected location") {
+      return address.description;
+    }
+    
+    // If we still don't have anything useful but have coordinates, use them
+    if (locationData?.coordinates) {
+      const [lng, lat] = locationData.coordinates;
+      return `Location (${lat.toFixed(6)}, ${lng.toFixed(6)})`;
+    }
   }
   
   return parts.join(', ') || 'Location not specified';
@@ -626,11 +640,11 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                                    report.location?.description ||
                                    (typeof report.location === 'string' ? report.location :
                                     // Try to format a nice address from structured data
-                                    report.location?.address?.street ? 
-                                      formatStructuredAddress(report.location.address) :
+                                    report.location?.address ? 
+                                      formatStructuredAddress(report.location.address, report.location) :
                                       // Fallback to coordinates if no structured address
                                       report.location?.coordinates ? 
-                                        `Detected location` :
+                                        `Location (${report.location.coordinates[1].toFixed(6)}, ${report.location.coordinates[0].toFixed(6)})` :
                                         'Location not specified')}
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -696,13 +710,11 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                          selectedReport.location?.description || 
                          (typeof selectedReport.location === 'string' ? selectedReport.location : 
                           // Try to format a nice address from structured data
-                          selectedReport.location?.address?.street ? 
-                            formatStructuredAddress(selectedReport.location.address) :
-                            // Fallback to simpler display
-                            selectedReport.location?.address ? 
-                              (typeof selectedReport.location.address === 'string' ? 
-                                selectedReport.location.address : 
-                                'Detected location') : 
+                          selectedReport.location?.address ? 
+                            formatStructuredAddress(selectedReport.location.address, selectedReport.location) :
+                            // Fallback to coordinates if available
+                            selectedReport.location?.coordinates ? 
+                              `Location (${selectedReport.location.coordinates[1].toFixed(6)}, ${selectedReport.location.coordinates[0].toFixed(6)})` : 
                               'Location not specified')}
                       </span>
                     </div>

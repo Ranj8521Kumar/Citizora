@@ -162,3 +162,37 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Leaflet map styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.leaflet-control-container .leaflet-routing-container-hide {
+  display: none;
+}
+
+.leaflet-marker-icon {
+  filter: hue-rotate(210deg);
+}
+
+/* Make popups more theme-consistent */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-popup-tip {
+  background-color: hsl(var(--background));
+}
+
+.leaflet-popup-content-wrapper {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: hsl(var(--foreground));
+}

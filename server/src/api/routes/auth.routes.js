@@ -37,7 +37,8 @@ router.post('/forgot-password', authController.forgotPassword);
 router.get('/reset-password/:token', (req, res) => {
   const { token } = req.params;
   // Redirect to the frontend reset password page with the token
-  const frontendUrl = process.env.FRONTEND_CITIZEN_URL || 'http://localhost:5173';
+  const frontendUrl = process.env.FRONTEND_CITIZEN_URL;
+  console.log(`frontend url: ${frontendUrl}`);
   res.redirect(`${frontendUrl}/?page=reset-password&token=${token}`);
 });
 

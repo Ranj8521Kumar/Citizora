@@ -18,22 +18,28 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
 
+    // Email validation for all modes
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email';
     }
 
-    if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+    // Password validation only for login and register modes
+    if (mode !== 'forgotPassword') {
+      if (!formData.password.trim()) {
+        newErrors.password = 'Password is required';
+      } else if (formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters';
+      }
     }
 
+    // Additional register-specific validations
     if (mode === 'register') {
       if (!formData.firstName.trim()) {
         newErrors.firstName = 'First name is required';
@@ -73,6 +79,12 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
         }
         
         onLogin(response.user, response.token);
+      } else if (mode === 'forgotPassword') {
+        // Call the forgot password API
+        await apiService.forgotPassword(formData.email);
+        setResetEmailSent(true);
+        // Clear errors if any
+        setErrors({});
       } else {
         const response = await apiService.register(formData.firstName, formData.lastName, formData.email, formData.password);
         onRegister(response.user, response.token);
@@ -96,7 +108,11 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">
-            {mode === 'login' ? 'Welcome Back' : 'Join CivicConnect'}
+            {mode === 'login' 
+              ? 'Welcome Back' 
+              : mode === 'register' 
+                ? 'Join CivicConnect' 
+                : 'Reset Your Password'}
           </DialogTitle>
         </DialogHeader>
 
@@ -150,33 +166,35 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                placeholder="Enter your password"
-                className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+          {mode !== 'forgotPassword' && (
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  placeholder="Enter your password"
+                  className={errors.password ? 'border-destructive pr-10' : 'pr-10'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-destructive">{errors.password}</p>
+              )}
             </div>
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password}</p>
-            )}
-          </div>
+          )}
 
           {mode === 'register' && (
             <div className="space-y-2">
@@ -198,9 +216,21 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
           {errors.general && (
             <p className="text-sm text-destructive text-center">{errors.general}</p>
           )}
+          
+          {mode === 'forgotPassword' && resetEmailSent && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-center">
+              Password reset instructions have been sent to your email.
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+            {isLoading 
+              ? 'Please wait...' 
+              : mode === 'login' 
+                ? 'Sign In' 
+                : mode === 'register' 
+                  ? 'Create Account' 
+                  : 'Reset Password'}
           </Button>
         </form>
 
@@ -216,12 +246,14 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
         <div className="text-center">
           <button
             type="button"
-            onClick={() => onSwitchMode(mode === 'login' ? 'register' : 'login')}
+            onClick={() => onSwitchMode(mode === 'forgotPassword' ? 'login' : mode === 'login' ? 'register' : 'login')}
             className="text-sm text-primary hover:underline"
           >
             {mode === 'login' 
               ? "Don't have an account? Sign up" 
-              : "Already have an account? Sign in"
+              : mode === 'register'
+                ? "Already have an account? Sign in"
+                : "Back to login"
             }
           </button>
         </div>
@@ -230,6 +262,7 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
           <div className="text-center">
             <button
               type="button"
+              onClick={() => onSwitchMode('forgotPassword')}
               className="text-sm text-muted-foreground hover:text-foreground hover:underline"
             >
               Forgot your password?

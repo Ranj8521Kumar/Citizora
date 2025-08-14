@@ -149,6 +149,28 @@ class ApiService {
       body: JSON.stringify({ email }),
     });
   }
+  
+  async validateResetToken(token) {
+    // You can create a lightweight endpoint just to validate the token
+    // without changing the password, or use a HEAD request
+    // This is optional and depends on your backend implementation
+    return await this.request(`/auth/validate-reset-token/${token}`, {
+      method: 'GET',
+    });
+  }
+  
+  async resetPassword(token, password) {
+    try {
+      console.log(`Resetting password with token: ${token}`);
+      return await this.request(`/auth/reset-password/${token}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ password }),
+      });
+    } catch (error) {
+      console.error('Reset password API error:', error);
+      throw error;
+    }
+  }
 
   // Report methods
   async getReports(filters = {}) {

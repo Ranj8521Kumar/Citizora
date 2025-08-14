@@ -5,6 +5,14 @@
     "installCommand": "npm ci",
     "rewrites": [
       {
+        "source": "/api/(.*)",
+        "destination": "/api/$1"
+      },
+      {
+        "source": "/reset-password/(.*)",
+        "destination": "/reset-password.html"
+      },
+      {
         "source": "/(.*)",
         "destination": "/index.html"
       }

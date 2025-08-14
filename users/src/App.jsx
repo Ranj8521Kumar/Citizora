@@ -5,6 +5,7 @@ import { ReportForm } from './components/ReportForm';
 import { CommunityView } from './components/CommunityView';
 import { ActiveCitizens } from './components/ActiveCitizens';
 import { AuthModal } from './components/AuthModal';
+import { ResetPassword } from './components/ResetPassword';
 import { Header } from './components/Header';
 import apiService from './services/api';
 import './utils/testConnection';
@@ -17,10 +18,47 @@ export default function App() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // Check for existing token on app load
+  const [resetToken, setResetToken] = useState(null);
+  // Check for existing token on app load and look for reset password token in URL
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Check if the current URL is a password reset link
+        // First check if it's directly from the query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const resetTokenFromUrl = urlParams.get('token');
+        const pageParam = urlParams.get('page');
+        
+        // Check for reset password in URL path or query params
+        if ((pageParam === 'reset-password' && resetTokenFromUrl) || 
+            window.location.pathname.includes('/reset-password')) {
+          
+          // If token is in the URL path, extract it
+          let token = resetTokenFromUrl;
+          if (!token) {
+            const tokenMatch = window.location.pathname.match(/\/reset-password\/(.+)/);
+            if (tokenMatch) token = tokenMatch[1];
+          }
+          
+          if (token) {
+            // Handle reset password flow
+            setResetToken(token);
+            setCurrentPage('reset-password');
+            setLoading(false);
+            
+            // Update URL to prevent refresh issues (optional)
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(
+                {}, 
+                document.title, 
+                `/?page=reset-password&token=${token}`
+              );
+            }
+            return;
+          }
+        }
+        
+        // Regular authentication flow
         const token = localStorage.getItem('token');
         if (token) {
           // Try to get current user
@@ -236,6 +274,7 @@ export default function App() {
   };
 
   const openAuth = (mode) => {
+    // Valid modes: 'login', 'register', 'forgotPassword'
     setAuthMode(mode);
     setShowAuthModal(true);
   };
@@ -311,6 +350,21 @@ export default function App() {
         
         {currentPage === 'citizens' && (
           <ActiveCitizens />
+        )}
+        
+        {currentPage === 'reset-password' && (
+          <ResetPassword 
+            token={resetToken}
+            onComplete={(mode) => {
+              if (mode === 'forgotPassword') {
+                openAuth('forgotPassword');
+              } else {
+                openAuth('login');
+              }
+              setCurrentPage('landing');
+              setResetToken(null);
+            }} 
+          />
         )}
       </main>
 

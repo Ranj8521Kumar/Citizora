@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, CheckCircle, Filter, Search, Star, ArrowRight, Download, Loader2, Pause } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle, Filter, Search, Star, ArrowRight, Download, Loader2, Pause, RefreshCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -8,14 +8,17 @@ import { downloadCSV, downloadJSON } from '../utils/csvExport';
 import { ExportButton } from './ui/export-button';
 import { getFieldWorkerReports } from '../services/api';
 import { formatTimeAgo } from '../utils/dateUtils';
+import { DashboardHeader } from './DashboardHeader';
 
 export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
   const [filter, setFilter] = useState(initialFilter);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [reports, setReports] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  const [refreshTimestamp, setRefreshTimestamp] = useState(Date.now());
   
   // Update filter when initialFilter changes
   useEffect(() => {
@@ -24,10 +27,17 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
     // Reset pagination when filter changes
     setPagination(prev => ({...prev, page: 1}));
   }, [initialFilter]);
+  
+  // Function to handle manual refresh
+  const handleRefresh = () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setRefreshTimestamp(Date.now());
+  };
 
-  // Fetch reports from API
+  // Effect to fetch reports when component mounts, pagination changes, or refresh is triggered
   useEffect(() => {
-    const fetchReports = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         
@@ -37,15 +47,10 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
           limit: pagination.limit
         };
         
-        // We'll fetch all tasks and filter them in the UI instead of server-side
-        // This ensures we always have accurate counts for all status types
-        
-        // Note: For a real production app with many tasks, we would want to implement
-        // server-side filtering with proper status mapping, but for our demo purposes
-        // this client-side approach ensures all status tabs work correctly
-        
+        // Call API to fetch reports
         const response = await getFieldWorkerReports(params);
         
+        // Process the response data
         console.log("API Response:", response.data);
         
         // Format reports to match our component structure
@@ -67,10 +72,8 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
             }
           }
 
-          // Check if the task is paused
-          let status;
-          
           // Map API status to UI status
+          let status;
           console.log(`Original report status: ${report.status}`);
           
           if (report.status === 'resolved') {
@@ -79,7 +82,7 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
             status = report.status.replace(/_/g, '-'); // Convert API status format
           }
           
-          // Use the isPaused flag set by the API service
+          // Check if the task is paused
           if (report.isPaused) {
             status = 'paused';
           } 
@@ -91,63 +94,62 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
             }
           }
           
-          console.log(`Mapped report status: ${status}`);
-          
           return {
             id: report._id,
             title: report.title,
             location: formattedLocation,
             priority: report.priority || 'medium',
             status: status,
+            timestamp: report.createdAt,
             timeAgo: formatTimeAgo(report.createdAt),
+            category: report.category || 'general',
             description: report.description,
-            estimatedTime: report.estimatedTime || 'Unknown',
-            category: report.category || 'General',
-            // Include original report data for reference
-            originalData: report
+            images: report.images || [],
+            timeline: report.timeline || [],
+            assignedTo: report.assignedTo,
+            reportedBy: report.reportedBy
           };
         });
         
+        // Update state with formatted reports
         setReports(formattedReports);
-        setPagination(response.data.pagination);
-        setError(null);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.totalReports || formattedReports.length,
+          pages: response.data.totalPages || Math.ceil(formattedReports.length / prev.limit)
+        }));
       } catch (err) {
-        console.error('Error fetching reports:', err);
-        setError('Failed to load reports. Please try again.');
+        console.error("Failed to fetch reports:", err);
+        setError("Failed to load tasks. Please try again.");
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
     
-    fetchReports();
-  }, [filter, pagination.page, pagination.limit]);
+    fetchData();
+  }, [pagination.page, pagination.limit, refreshTimestamp]);
 
-  const getPriorityVariant = (priority) => {
-    switch (priority) {
-      case 'urgent': return 'destructive';
-      case 'high': return 'default';
-      case 'medium': return 'secondary';
-      case 'low': return 'outline';
-      default: return 'outline';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'assigned': return <Clock className="w-4 h-4 text-muted-foreground" />;
-      case 'in-progress': return <AlertTriangle className="w-4 h-4 text-orange-500" />;
-      case 'paused': return <Pause className="w-4 h-4 text-red-500" />;
-      case 'completed': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <Clock className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
-  // Filter reports by status and search term (client-side)
+  // Filter reports based on selected filter and search term
   const filteredReports = reports.filter(report => {
-    // Apply filter based on status tab
+    // First apply status filter
     if (filter !== 'all') {
-      // For "completed" tab, show both "completed" and "resolved" statuses
-      if (filter === 'completed') {
+      if (filter === 'in-progress') {
+        if (report.status !== 'in-progress') {
+          return false;
+        }
+      }
+      else if (filter === 'paused') {
+        if (report.status !== 'paused') {
+          return false;
+        }
+      }
+      else if (filter === 'assigned') {
+        if (report.status !== 'assigned') {
+          return false;
+        }
+      } 
+      else if (filter === 'completed') {
         if (report.status !== 'completed' && report.status !== 'resolved') {
           return false;
         }
@@ -194,19 +196,22 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-foreground text-lg font-semibold">Task Dashboard</h1>
-          <ExportButton
-            data={reports}
-            filename="field-worker-tasks"
-            options={[
-              { label: 'CSV', onClick: data => downloadCSV(data, 'field-worker-tasks') },
-              { label: 'JSON', onClick: data => downloadJSON(data, 'field-worker-tasks') }
-            ]}
-          />
-        </div>
-        
+      <DashboardHeader 
+        title="Task Dashboard" 
+        onRefresh={handleRefresh} 
+        isRefreshing={refreshing || loading}
+      >
+        <ExportButton
+          data={reports}
+          filename="field-worker-tasks"
+          options={[
+            { label: 'CSV', onClick: data => downloadCSV(data, 'field-worker-tasks') },
+            { label: 'JSON', onClick: data => downloadJSON(data, 'field-worker-tasks') }
+          ]}
+        />
+      </DashboardHeader>
+      
+      <div className="bg-card border-t border-border p-4">
         <div className="flex flex-col space-y-3">
           <div className="flex gap-2 overflow-x-auto pb-2">
             {filters.map(item => (
@@ -236,55 +241,97 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
           </div>
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-auto p-4">
-        {loading ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {loading && !refreshing ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">Loading tasks...</p>
           </div>
         ) : error ? (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-4 text-center">
+          <div className="flex flex-col items-center justify-center h-full">
+            <AlertTriangle className="h-8 w-8 text-destructive mb-4" />
             <p className="text-destructive">{error}</p>
-            <Button onClick={() => window.location.reload()} variant="outline" className="mt-2">
-              Retry
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={handleRefresh}
+            >
+              Try Again
             </Button>
           </div>
         ) : sortedReports.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-2">No tasks found</p>
-            <p className="text-sm text-muted-foreground">
-              {searchTerm ? 'Try a different search term' : 'All your assigned tasks will appear here'}
-            </p>
+          <div className="flex flex-col items-center justify-center h-full">
+            <div className="border border-dashed border-border rounded-lg p-12 text-center">
+              <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-1">No tasks found</h3>
+              <p className="text-muted-foreground">
+                {searchTerm ? 'Try adjusting your search' : filter !== 'all' ? 'Try selecting a different filter' : 'No tasks are currently assigned to you'}
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-4">
             {sortedReports.map(report => (
-              <Card key={report.id} className="hover:bg-accent/5 transition-colors cursor-pointer" onClick={() => onReportSelect(report)}>
+              <Card 
+                key={report.id} 
+                className="hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                onClick={() => onReportSelect(report)}
+              >
                 <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {getStatusIcon(report.status)}
-                        <h3 className="font-medium text-foreground truncate">{report.title}</h3>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-2">
-                        <span className="text-xs text-muted-foreground truncate">
-                          {report.location}
-                        </span>
-                        <span className="hidden sm:block text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground">{report.timeAgo}</span>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant={getPriorityVariant(report.priority)}>
-                          {report.priority.toUpperCase()}
-                        </Badge>
-                        <Badge variant="outline">{report.category}</Badge>
+                  <div className="flex flex-col space-y-2">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium text-foreground line-clamp-1">{report.title}</h3>
+                      <div className="flex items-center">
+                        {report.priority === 'urgent' && (
+                          <Badge variant="destructive" className="ml-2 text-xs">URGENT</Badge>
+                        )}
+                        {report.priority === 'high' && (
+                          <Badge variant="destructive" className="ml-2 text-xs">High Priority</Badge>
+                        )}
                       </div>
                     </div>
                     
-                    <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <p className="text-sm text-muted-foreground line-clamp-1">{report.location}</p>
+                    
+                    <div className="flex justify-between items-center pt-2">
+                      <div className="flex items-center">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground mr-1.5" />
+                        <span className="text-xs text-muted-foreground">{report.timeAgo}</span>
+                      </div>
+                      
+                      <div className="flex items-center">
+                        {report.status === 'assigned' && (
+                          <Badge variant="outline" className="text-xs flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Assigned
+                          </Badge>
+                        )}
+                        
+                        {report.status === 'in-progress' && (
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-amber-100 text-amber-800 border-amber-200">
+                            <Star className="h-3 w-3" />
+                            In Progress
+                          </Badge>
+                        )}
+                        
+                        {report.status === 'paused' && (
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-orange-100 text-orange-800 border-orange-200">
+                            <Pause className="h-3 w-3" />
+                            Paused
+                          </Badge>
+                        )}
+                        
+                        {(report.status === 'completed' || report.status === 'resolved') && (
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-emerald-100 text-emerald-800 border-emerald-200">
+                            <CheckCircle className="h-3 w-3" />
+                            Completed
+                          </Badge>
+                        )}
+                        
+                        <ArrowRight className="h-4 w-4 text-muted-foreground ml-2" />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -292,28 +339,28 @@ export function TaskDashboard({ onReportSelect, initialFilter = 'all' }) {
           </div>
         )}
       </div>
-      
+
       {/* Pagination */}
       {pagination.pages > 1 && (
-        <div className="border-t border-border p-4 flex justify-between items-center">
+        <div className="flex items-center justify-between p-4 border-t border-border">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-            disabled={pagination.page === 1}
+            disabled={pagination.page <= 1 || loading}
           >
             Previous
           </Button>
           
-          <span className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             Page {pagination.page} of {pagination.pages}
-          </span>
+          </div>
           
           <Button
             variant="outline"
             size="sm"
             onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
-            disabled={pagination.page === pagination.pages}
+            disabled={pagination.page >= pagination.pages || loading}
           >
             Next
           </Button>

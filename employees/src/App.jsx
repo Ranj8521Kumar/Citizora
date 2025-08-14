@@ -6,6 +6,7 @@ import { StatusUpdate } from './components/StatusUpdate';
 import { MapView } from './components/MapView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { NavigationBar } from './components/NavigationBar';
+import { ProfileMenu } from './components/ProfileMenu';
 import { AuthProvider, useAuth } from './components/Auth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { ApiProvider } from './services/ApiContext';

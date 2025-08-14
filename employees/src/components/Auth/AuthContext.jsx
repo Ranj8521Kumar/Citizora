@@ -14,7 +14,14 @@ export const AuthProvider = ({ children }) => {
       if (getAuthToken()) {
         try {
           const userData = await getCurrentUser();
-          setUser(userData.data.user);
+          const user = userData.data.user;
+          
+          // Check if user has the role of employee/fieldworker
+          if (!user.role || (user.role !== 'employee' && user.role !== 'fieldworker')) {
+            throw new Error('Access denied. Only employees can access this application.');
+          }
+          
+          setUser(user);
           setIsAuthenticated(true);
         } catch (err) {
           console.error('Authentication error:', err.message);
@@ -34,7 +41,14 @@ export const AuthProvider = ({ children }) => {
     
     try {
       const response = await apiLogin({ email, password });
-      setUser(response.data.user);
+      const userData = response.data.user;
+      
+      // Check if user has the role of employee/fieldworker
+      if (!userData.role || (userData.role !== 'employee' && userData.role !== 'fieldworker')) {
+        throw new Error('Access denied. Only employees can access this application.');
+      }
+      
+      setUser(userData);
       setIsAuthenticated(true);
       setLoading(false);
       return response;

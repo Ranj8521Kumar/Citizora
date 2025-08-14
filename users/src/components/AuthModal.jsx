@@ -67,6 +67,11 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
           throw new Error('Access denied. Only citizens can log in to this application.');
         }
         
+        // Check if user is active
+        if (userData.isActive === false || userData.active === false) {
+          throw new Error('Your account has been deactivated. Please contact support for assistance.');
+        }
+        
         onLogin(response.user, response.token);
       } else {
         const response = await apiService.register(formData.firstName, formData.lastName, formData.email, formData.password);

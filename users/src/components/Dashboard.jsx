@@ -23,7 +23,7 @@ import {
   RotateCw,
   Loader,
   HardHat,
-  Tool,
+  // Tool doesn't exist in lucide-react library
   Hammer,
   Wrench
 } from 'lucide-react';

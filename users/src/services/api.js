@@ -66,9 +66,17 @@ class ApiService {
   // Generic request method
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    
+    // Properly merge headers from options with default headers
+    const defaultHeaders = this.getHeaders();
+    const mergedHeaders = {
+      ...defaultHeaders,
+      ...(options.headers || {})
+    };
+    
     const config = {
-      headers: this.getHeaders(),
       ...options,
+      headers: mergedHeaders
     };
 
     console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
@@ -139,13 +147,27 @@ class ApiService {
   // Report methods
   async getReports(filters = {}) {
     try {
+      // Ensure we're always getting fresh data by adding a timestamp if not already present
+      if (!filters._t) {
+        filters._t = new Date().getTime();
+      }
+      
       const queryParams = new URLSearchParams(filters).toString();
       // Add includeImages=true parameter to ensure we get all images including those from field workers
       const endpointWithImages = queryParams 
         ? `/reports?${queryParams}&includeImages=true` 
         : '/reports?includeImages=true';
       
-      const response = await this.request(endpointWithImages);
+      // Add cache-busting headers to ensure we get fresh data
+      const options = {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      };
+      
+      const response = await this.request(endpointWithImages, options);
       
       console.log('API getReports response:', response);
       

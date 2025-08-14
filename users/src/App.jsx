@@ -44,18 +44,14 @@ export default function App() {
       setError(null); // Clear any previous errors
       console.log('Loading reports for user:', user);
       
-      // Determine whether to show loading indicator
-      // We'll check the current reports length through a function to avoid a dependency
-      setLoading(prevLoading => {
-        // Only set loading to true if there are no reports yet
-        // This uses the function form of setState to access current state
-        // without creating a dependency
-        const shouldShowLoading = !reports || reports.length === 0;
-        return shouldShowLoading ? true : prevLoading;
-      });
+      // Always show loading indicator on refresh
+      setLoading(true);
       
       try {
-        const reportsData = await apiService.getReports();
+        // Add a timestamp parameter to bust any cache
+        const reportsData = await apiService.getReports({ 
+          _t: new Date().getTime() 
+        });
         console.log('Reports data received from API:', reportsData);
         
         // Process the reports data

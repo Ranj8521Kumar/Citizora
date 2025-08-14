@@ -411,7 +411,19 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                 variant="outline" 
                 onClick={() => {
                   setLoading(true);
-                  onRefresh().finally(() => setLoading(false));
+                  // Actually refresh the data from the server
+                  onRefresh()
+                    .then(() => {
+                      console.log('Data refreshed successfully');
+                      // Force re-render by updating a state value
+                      setSearchTerm(prevTerm => {
+                        // Temporarily change and revert back to force re-calculation
+                        setTimeout(() => setSearchTerm(prevTerm), 10);
+                        return prevTerm + ' ';
+                      });
+                    })
+                    .catch(err => console.error('Error refreshing data:', err))
+                    .finally(() => setLoading(false));
                 }} 
                 className="flex items-center space-x-2"
                 disabled={loading}

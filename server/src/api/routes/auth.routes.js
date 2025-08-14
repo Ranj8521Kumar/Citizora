@@ -2,6 +2,7 @@
  * Authentication Routes
  * Defines routes for user authentication
  */
+const dotenv = require('dotenv');
 
 // Load environment variables
 dotenv.config();

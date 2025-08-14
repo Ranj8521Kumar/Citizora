@@ -1,3 +1,5 @@
+import { processImageArray } from '../utils/imageHelper';
+
 // Primary API endpoint
 const REMOTE_API_URL = 'https://civic-connect-backend-aq2a.onrender.com/api';
 // Fallback to local API for development
@@ -27,10 +29,14 @@ class ApiService {
       }
       
       console.log('✅ Connected to remote server');
+      // Store the base URL in localStorage for image helper
+      localStorage.setItem('apiBaseUrl', this.baseURL);
     } catch (error) {
       console.warn('⚠️ Remote server connection failed, switching to local:', error.message);
       this.baseURL = LOCAL_API_URL;
       console.log('🔄 Using local API URL:', this.baseURL);
+      // Store the updated base URL in localStorage
+      localStorage.setItem('apiBaseUrl', this.baseURL);
     }
   }
 
@@ -196,22 +202,29 @@ class ApiService {
         reports = response.data;
       }
       
-      // Process each report to ensure images are properly formatted
+        // Process each report to ensure images are properly formatted
       reports = reports.map(report => {
         // Ensure report has both regular images and progressImages arrays
         if (!report.images) report.images = [];
         if (!report.progressImages) report.progressImages = [];
         
-        // Debugging images
-        console.log(`Report ${report._id} images:`, report.images);
+        // Format image URLs to ensure they have the full path
+        if (report.images && Array.isArray(report.images)) {
+          // Use the utility function to process all images
+          report.images = processImageArray(report.images);
+        }
         
-        // Process progress updates and timeline entries
+        // Debugging images
+        console.log(`Report ${report._id} images:`, report.images);        // Process progress updates and timeline entries
         if (report.progressUpdates && Array.isArray(report.progressUpdates)) {
           // Extract images from progress updates and add them to progressImages
           report.progressUpdates.forEach(update => {
             if (update.images && Array.isArray(update.images)) {
-              console.log(`Adding progress images from update:`, update.images);
-              report.progressImages.push(...update.images);
+              // Use the utility function to process all images
+              const formattedImages = processImageArray(update.images);
+              
+              console.log(`Adding progress images from update:`, formattedImages);
+              report.progressImages.push(...formattedImages);
             }
           });
         }

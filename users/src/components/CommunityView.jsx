@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { getImageUrl } from '../utils/imageHelper';
 import { 
   Search, 
   MapPin, 
@@ -269,6 +270,28 @@ export function CommunityView({ reports, user, onLogin }) {
       return newSet;
     });
   };
+  
+  // Debug function to log report images when a report is selected
+  useEffect(() => {
+    if (selectedReport) {
+      console.log(`Selected report ${selectedReport._id || selectedReport.id} images:`, selectedReport.images);
+      console.log(`Selected report progress images:`, selectedReport.progressImages);
+      
+      if (selectedReport.images && selectedReport.images.length > 0) {
+        selectedReport.images.forEach((img, idx) => {
+          console.log(`Image ${idx + 1}:`, {
+            type: typeof img,
+            value: img,
+            isString: typeof img === 'string',
+            isObject: typeof img === 'object' && img !== null,
+            hasUrl: typeof img === 'object' && img !== null && 'url' in img
+          });
+        });
+      } else {
+        console.log('No images found in selected report');
+      }
+    }
+  }, [selectedReport]);
 
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
@@ -669,14 +692,23 @@ export function CommunityView({ reports, user, onLogin }) {
                     <div>
                       <h4 className="font-medium mb-2">Photos</h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {selectedReport.images.map((image, index) => (
-                          <img
-                            key={index}
-                            src={image}
-                            alt={`Report image ${index + 1}`}
-                            className="w-full h-20 object-cover rounded border"
-                          />
-                        ))}
+                        {selectedReport.images.map((image, index) => {
+                          // Use the utility function to get a valid image URL
+                          const imageUrl = getImageUrl(image);
+                          
+                          return (
+                            <img
+                              key={index}
+                              src={imageUrl}
+                              alt={`Report image ${index + 1}`}
+                              className="w-full h-20 object-cover rounded border"
+                              onError={(e) => {
+                                console.error(`Failed to load image: ${imageUrl}`);
+                                e.target.src = 'https://via.placeholder.com/150?text=Image+Error';
+                              }}
+                            />
+                          );
+                        })}
                       </div>
                     </div>
                   )}

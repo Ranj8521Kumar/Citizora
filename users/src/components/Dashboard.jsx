@@ -181,9 +181,10 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
         normalizedReport.status = 'in-progress';
       } else if (normalizedReport.status === 'completed') {
         normalizedReport.status = 'resolved';
-      } else if (['pending', 'assigned', ''].includes(normalizedReport.status)) {
+      } else if (['pending', ''].includes(normalizedReport.status)) {
         normalizedReport.status = 'submitted';
       }
+      // Keep 'assigned' status as is - don't convert to 'submitted'
       
       // Ensure other required fields exist
       if (!normalizedReport.title) normalizedReport.title = 'Untitled Report';
@@ -225,6 +226,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
   const stats = {
     total: normalizedReports.length,
     submitted: normalizedReports.filter(r => r.status === 'submitted').length,
+    assigned: normalizedReports.filter(r => r.status === 'assigned').length,
     inProgress: normalizedReports.filter(r => r.status === 'in-progress').length,
     resolved: normalizedReports.filter(r => r.status === 'resolved').length,
   };
@@ -249,6 +251,8 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
     switch (status) {
       case 'submitted':
         return 'bg-blue-100 text-blue-800';
+      case 'assigned':
+        return 'bg-purple-100 text-purple-800';
       case 'in-progress':
         return 'bg-yellow-100 text-yellow-800';
       case 'resolved':
@@ -266,6 +270,8 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
         return Construction;
       case 'submitted':
         return FileText;
+      case 'assigned':
+        return TrendingUp; // Using TrendingUp icon for assigned status
       case 'closed':
         return AlertCircle;
       default:
@@ -485,7 +491,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold">{stats.submitted}</p>
+                  <p className="text-2xl font-bold">{stats.submitted + stats.assigned}</p>
                 </div>
                 <AlertCircle className="w-8 h-8 text-blue-500" />
               </div>
@@ -519,6 +525,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="assigned">Assigned</SelectItem>
                       <SelectItem value="in-progress">In Progress</SelectItem>
                       <SelectItem value="resolved">Resolved</SelectItem>
                       <SelectItem value="closed">Closed</SelectItem>

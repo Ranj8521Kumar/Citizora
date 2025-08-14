@@ -8,6 +8,7 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { MapComponent } from './MapComponent';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -21,7 +22,8 @@ import {
   Upload,
   X,
   Camera,
-  Plus
+  Plus,
+  Edit3
 } from 'lucide-react';
 
 const categories = [
@@ -49,7 +51,8 @@ export function ReportForm({ onSubmit, onCancel }) {
       city: '',
       state: '',
       country: '',
-      postcode: ''
+      postcode: '',
+      zip: '' // For zip code input in manual entry
     },
     images: [],
     imageFiles: [], // Store actual file objects
@@ -58,6 +61,7 @@ export function ReportForm({ onSubmit, onCancel }) {
   });
   const [uploadingImages, setUploadingImages] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isManualLocationOpen, setIsManualLocationOpen] = useState(false);
 
   const steps = ['category', 'details', 'location', 'images', 'review'];
   const currentStepIndex = steps.indexOf(currentStep);
@@ -121,7 +125,8 @@ export function ReportForm({ onSubmit, onCancel }) {
               city: formData.addressDetails?.city || '',
               state: formData.addressDetails?.state || '',
               country: formData.addressDetails?.country || '',
-              postcode: formData.addressDetails?.postcode || ''
+              postcode: formData.addressDetails?.postcode || formData.addressDetails?.zip || '',
+              zip: formData.addressDetails?.zip || formData.addressDetails?.postcode || '' // Include zip code from manual entry
             }
           }
         };
@@ -379,9 +384,148 @@ export function ReportForm({ onSubmit, onCancel }) {
   };
 
   const getCategoryById = (id) => categories.find(cat => cat.id === id);
+  
+  const handleManualLocation = (manualData) => {
+    // Format the display address from manual input
+    const addressComponents = [];
+    if (manualData.street) {
+      let streetAddress = manualData.street;
+      addressComponents.push(streetAddress);
+    }
+    
+    if (manualData.city) {
+      addressComponents.push(manualData.city);
+    }
+    
+    if (manualData.state) {
+      addressComponents.push(manualData.state);
+    }
+    
+    // Format the address as a readable string
+    const formattedAddress = addressComponents.join(', ');
+    
+    // Update form data with manual location details
+    setFormData(prev => ({
+      ...prev,
+      location: formattedAddress, // For display
+      fullAddress: formattedAddress, // For consistency
+      coordinates: undefined, // No coordinates for manual entry
+      addressDetails: {
+        ...manualData
+      }
+    }));
+    
+    // Close the modal
+    setIsManualLocationOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-muted/30 py-8">
+      {/* Manual Location Modal */}
+      <Dialog 
+        open={isManualLocationOpen} 
+        onOpenChange={setIsManualLocationOpen}
+      >
+        <DialogContent 
+          className="sm:max-w-md"
+          style={{ zIndex: 9999 }} // Ensure this is above everything
+        >
+          <DialogHeader>
+            <DialogTitle>Enter Location Details</DialogTitle>
+            <DialogDescription>
+              Please provide the exact location details for the issue
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const formElements = e.target.elements;
+            
+            const manualData = {
+              street: formElements.street.value.trim(),
+              city: formElements.city.value.trim(),
+              state: formElements.state.value.trim(),
+              zip: formElements.zip.value.trim(),
+              country: formElements.country ? formElements.country.value.trim() : ''
+            };
+            
+            handleManualLocation(manualData);
+          }}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-1 gap-2">
+                <Label htmlFor="street" className="text-sm font-medium text-gray-700">Street *</Label>
+                <Input
+                  id="street"
+                  name="street"
+                  defaultValue={formData.addressDetails.street}
+                  placeholder="e.g., Jais, Amethi, Uttar Pradesh"
+                  required
+                  className="bg-gray-50 border border-gray-300 rounded-md px-3 py-2"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city" className="text-sm font-medium text-gray-700">City *</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    defaultValue={formData.addressDetails.city}
+                    placeholder="e.g., Amethi"
+                    required
+                    className="bg-gray-50 border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="state" className="text-sm font-medium text-gray-700">State *</Label>
+                  <Input
+                    id="state"
+                    name="state"
+                    defaultValue={formData.addressDetails.state}
+                    placeholder="e.g., Uttar Pradesh"
+                    required
+                    className="bg-gray-50 border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="zip" className="text-sm font-medium text-gray-700">Zip Code *</Label>
+                  <Input
+                    id="zip"
+                    name="zip"
+                    defaultValue={formData.addressDetails.postcode || formData.addressDetails.zip}
+                    placeholder="e.g., 229305"
+                    required
+                    className="bg-gray-50 border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="country" className="text-sm font-medium text-gray-700">Country</Label>
+                  <Input
+                    id="country"
+                    name="country"
+                    defaultValue={formData.addressDetails.country}
+                    placeholder="e.g., India"
+                    className="bg-gray-50 border border-gray-300 rounded-md px-3 py-2"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setIsManualLocationOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Save Location
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -535,6 +679,15 @@ export function ReportForm({ onSubmit, onCancel }) {
                     >
                       <MapPin className="w-4 h-4" />
                       <span>Use Current Location</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsManualLocationOpen(true)}
+                      className="flex items-center space-x-2"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      <span>Manual Location</span>
                     </Button>
                     {formData.coordinates && (
                       <Badge variant="secondary">Location detected</Badge>
@@ -718,10 +871,34 @@ export function ReportForm({ onSubmit, onCancel }) {
                   
                   <div>
                     <h3 className="font-medium mb-2">Location</h3>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mb-2">
                       <MapPin className="w-4 h-4" />
                       <span>{formData.location}</span>
                     </div>
+                    
+                    {/* Show detailed address information if available */}
+                    {(formData.addressDetails.street || formData.addressDetails.city || formData.addressDetails.state) && (
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        <p><strong>Address Details:</strong></p>
+                        <ul className="pl-4 space-y-1">
+                          {formData.addressDetails.street && (
+                            <li>Street: {formData.addressDetails.street}</li>
+                          )}
+                          {formData.addressDetails.city && (
+                            <li>City: {formData.addressDetails.city}</li>
+                          )}
+                          {formData.addressDetails.state && (
+                            <li>State: {formData.addressDetails.state}</li>
+                          )}
+                          {(formData.addressDetails.zip || formData.addressDetails.postcode) && (
+                            <li>Zip/Postal Code: {formData.addressDetails.zip || formData.addressDetails.postcode}</li>
+                          )}
+                          {formData.addressDetails.country && (
+                            <li>Country: {formData.addressDetails.country}</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   
                   {formData.images.length > 0 && (

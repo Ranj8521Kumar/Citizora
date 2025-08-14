@@ -60,6 +60,13 @@ export function AuthModal({ mode, onLogin, onRegister, onClose, onSwitchMode }) 
     try {
       if (mode === 'login') {
         const response = await apiService.login(formData.email, formData.password);
+        
+        // Check if user has the required role (user)
+        const userData = response.user;
+        if (!userData || userData.role !== 'user') {
+          throw new Error('Access denied. Only citizens can log in to this application.');
+        }
+        
         onLogin(response.user, response.token);
       } else {
         const response = await apiService.register(formData.firstName, formData.lastName, formData.email, formData.password);

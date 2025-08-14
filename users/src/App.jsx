@@ -25,7 +25,15 @@ export default function App() {
         if (token) {
           // Try to get current user
           const userData = await apiService.getCurrentUser();
-          setUser(userData);
+          
+          // Check if user has the required role (user)
+          if (!userData || userData.role !== 'user') {
+            console.error('Access denied: Only citizens can use this application');
+            apiService.clearToken();
+            setUser(null);
+          } else {
+            setUser(userData);
+          }
         }
       } catch (error) {
         console.error('Failed to initialize app:', error);
@@ -146,7 +154,15 @@ export default function App() {
   }, [loadReports, user]);
 
   const handleLogin = (userData) => {
-    setUser(userData.user || userData);
+    // Make sure the user has the 'user' role
+    const user = userData.user || userData;
+    if (!user || user.role !== 'user') {
+      console.error('Access denied: Only citizens can use this application');
+      apiService.clearToken();
+      return;
+    }
+    
+    setUser(user);
     setShowAuthModal(false);
     setCurrentPage('dashboard');
   };

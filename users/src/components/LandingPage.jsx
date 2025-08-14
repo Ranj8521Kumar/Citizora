@@ -24,7 +24,7 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
   const stats = {
     totalReports: safeReports.length,
     resolvedReports: safeReports.filter(r => r.status === 'resolved').length,
-    inProgressReports: safeReports.filter(r => r.status === 'in-progress').length,
+    inProgressReports: safeReports.filter(r => r.status === 'in_progress').length,
     activeUsers: activeCitizens
   };
 

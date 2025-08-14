@@ -31,8 +31,37 @@ export function CommunityView({ reports, user, onLogin }) {
 
   // Ensure reports is an array and provide safety checks
   const safeReports = Array.isArray(reports) ? reports : [];
+  
+  // Normalize report statuses for consistent handling (copied from Dashboard.jsx)
+  const normalizedReports = safeReports.map(report => {
+    if (!report) return { status: 'unknown' };
+    
+    const normalizedReport = { ...report };
+    
+    try {
+      // Normalize status (convert underscores to hyphens and lowercase)
+      const originalStatus = report.status || '';
+      normalizedReport.originalStatus = originalStatus; // keep original for reference
+      normalizedReport.status = originalStatus.toString().replace(/_/g, '-').toLowerCase();
+      
+      // Handle special cases
+      if (normalizedReport.status === 'in-progress' || normalizedReport.status === 'inprogress') {
+        normalizedReport.status = 'in-progress';
+      } else if (normalizedReport.status === 'completed') {
+        normalizedReport.status = 'resolved';
+      } else if (['pending', ''].includes(normalizedReport.status)) {
+        normalizedReport.status = 'submitted';
+      }
+      // Keep 'assigned' status as is - don't convert to 'submitted'
+    } catch (err) {
+      console.error('Error normalizing report:', err, report);
+      normalizedReport.status = 'unknown';
+    }
+    
+    return normalizedReport;
+  });
 
-  const filteredAndSortedReports = safeReports
+  const filteredAndSortedReports = normalizedReports
     .filter(report => {
       const matchesSearch = (report.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (report.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -45,9 +74,10 @@ export function CommunityView({ reports, user, onLogin }) {
       switch (sortBy) {
         case 'votes':
           return b.votes - a.votes;
-        case 'priority':
+        case 'priority': {
           const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
           return priorityOrder[b.priority] - priorityOrder[a.priority];
+        }
         case 'recent':
         default:
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -55,10 +85,10 @@ export function CommunityView({ reports, user, onLogin }) {
     });
 
   const stats = {
-    total: safeReports.length,
-    resolved: safeReports.filter(r => r.status === 'resolved').length,
-    inProgress: safeReports.filter(r => r.status === 'in-progress').length,
-    totalVotes: safeReports.reduce((sum, r) => sum + (r.votes || 0), 0),
+    total: normalizedReports.length,
+    resolved: normalizedReports.filter(r => r.status === 'resolved').length,
+    inProgress: normalizedReports.filter(r => r.status === 'in-progress').length,
+    totalVotes: normalizedReports.reduce((sum, r) => sum + (r.votes || 0), 0),
   };
 
   const categories = [
@@ -123,7 +153,7 @@ export function CommunityView({ reports, user, onLogin }) {
         month: 'short',
         day: 'numeric'
       });
-    } catch (error) {
+    } catch {
       return 'Date not available';
     }
   };
@@ -138,7 +168,7 @@ export function CommunityView({ reports, user, onLogin }) {
         hour: 'numeric',
         minute: '2-digit'
       });
-    } catch (error) {
+    } catch {
       return 'Date not available';
     }
   };

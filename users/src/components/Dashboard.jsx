@@ -695,7 +695,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                       {/* Original report images */}
                       {selectedReport.images && selectedReport.images.length > 0 && (
                         <>
-                          <p className="text-xs text-muted-foreground mb-1">Your submitted photos:</p>
+                          <p className="text-xs text-muted-foreground mb-1">All submitted photos:</p>
                           <div className="grid grid-cols-2 gap-2 mb-4">
                             {selectedReport.images.map((image, index) => {
                               console.log(`Processing image ${index}:`, image);

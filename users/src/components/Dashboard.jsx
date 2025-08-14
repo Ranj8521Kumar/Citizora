@@ -17,7 +17,15 @@ import {
   Construction,
   FileText,
   Eye,
-  Calendar
+  Calendar,
+  ActivityIcon,
+  Settings,
+  RotateCw,
+  Loader,
+  HardHat,
+  Tool,
+  Hammer,
+  Wrench
 } from 'lucide-react';
 
 // Helper function to format a structured address
@@ -521,7 +529,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                   <p className="text-sm text-muted-foreground">In Progress</p>
                   <p className="text-2xl font-bold">{stats.inProgress}</p>
                 </div>
-                <Construction className="w-8 h-8 text-accent" />
+                <Construction className="w-8 h-8 text-[rgb(235,96,23)]" />
               </div>
             </CardContent>
           </Card>
@@ -533,7 +541,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                   <p className="text-sm text-muted-foreground">Resolved</p>
                   <p className="text-2xl font-bold">{stats.resolved}</p>
                 </div>
-                <CheckCircle className="w-8 h-8 text-secondary" />
+                <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
             </CardContent>
           </Card>

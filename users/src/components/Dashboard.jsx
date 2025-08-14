@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -26,6 +26,12 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReport, setSelectedReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const selectedReportRef = useRef(null);
+  
+  // Update ref whenever selectedReport changes
+  useEffect(() => {
+    selectedReportRef.current = selectedReport;
+  }, [selectedReport]);
   
   // Debug reports data
   useEffect(() => {
@@ -42,15 +48,17 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
         }
         
         // If a report is already selected, update it with the latest data
-        if (selectedReport && selectedReport._id) {
-          const updatedSelectedReport = reports.find(r => r._id === selectedReport._id);
-          if (updatedSelectedReport && JSON.stringify(updatedSelectedReport) !== JSON.stringify(selectedReport)) {
+        const currentSelectedReport = selectedReportRef.current;
+        if (currentSelectedReport && currentSelectedReport._id) {
+          const updatedSelectedReport = reports.find(r => r._id === currentSelectedReport._id);
+          if (updatedSelectedReport && 
+              JSON.stringify(updatedSelectedReport) !== JSON.stringify(currentSelectedReport)) {
             console.log('Updating selected report with latest data:', updatedSelectedReport);
             setSelectedReport(updatedSelectedReport);
           }
         } 
         // Always select first report on load if none is selected
-        else if (!selectedReport) {
+        else if (!currentSelectedReport) {
           try {
             // Ensure the report object is safe to use as state
             const safeReport = { ...reports[0] };
@@ -74,7 +82,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
     } else {
       console.log('Reports is neither an array nor an object');
     }
-  }, [reports, selectedReport]);
+  }, [reports]); // Only depend on reports, not selectedReport
 
   // Helper function to render images consistently
   const renderImage = (image, index, type = 'standard', size = 'medium') => {

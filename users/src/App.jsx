@@ -44,17 +44,17 @@ export default function App() {
       setError(null); // Clear any previous errors
       console.log('Loading reports for user:', user);
       
-      // Get data from API - don't show loading indicator for refreshes
-      // to prevent the whole app from re-rendering
-      const currentReports = reports;
-      let showLoadingIndicator = currentReports.length === 0;
+      // Determine whether to show loading indicator
+      // We'll check the current reports length through a function to avoid a dependency
+      setLoading(prevLoading => {
+        // Only set loading to true if there are no reports yet
+        // This uses the function form of setState to access current state
+        // without creating a dependency
+        const shouldShowLoading = !reports || reports.length === 0;
+        return shouldShowLoading ? true : prevLoading;
+      });
       
       try {
-        // Only show loading indicator on initial load, not on refreshes
-        if (showLoadingIndicator) {
-          setLoading(true);
-        }
-        
         const reportsData = await apiService.getReports();
         console.log('Reports data received from API:', reportsData);
         
@@ -97,11 +97,11 @@ export default function App() {
         
         console.log('Reports data for Dashboard:', processedReports);
         
-        // Update reports state without triggering a complete UI refresh
+        // Update reports state using functional update to avoid dependency
         setReports(prev => {
           // If we're adding a new report, it's already in the state from handleSubmitReport
           // So we need to merge intelligently without duplicating
-          if (prev.length > 0 && processedReports.length > 0) {
+          if (prev && prev.length > 0 && processedReports.length > 0) {
             // Create a map of existing reports by ID
             const existingReportsMap = new Map(
               prev.map(report => [report._id, report])
@@ -132,9 +132,7 @@ export default function App() {
         setError('Failed to load reports. Please try again later.');
         setReports([]);
       } finally {
-        if (showLoadingIndicator) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     } catch (error) {
       console.error('Failed to load reports:', error);
@@ -142,7 +140,7 @@ export default function App() {
       // Set empty array on error to prevent filter issues
       setReports([]);
     }
-  }, [user, reports]); // Include user and reports as dependencies
+  }, [user]); // We're using functional updates, so we don't need reports in the dependency array
   
   // Load reports when user is authenticated
   useEffect(() => {

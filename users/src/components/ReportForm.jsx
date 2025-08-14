@@ -40,7 +40,17 @@ export function ReportForm({ onSubmit, onCancel }) {
     description: '',
     category: '',
     location: '',
+    fullAddress: '', // Store the actual full address from geocoding
     coordinates: undefined,
+    addressDetails: {
+      street: '',
+      houseNumber: '',
+      neighborhood: '',
+      city: '',
+      state: '',
+      country: '',
+      postcode: ''
+    },
     images: [],
     imageFiles: [], // Store actual file objects
     priority: 'medium',
@@ -97,7 +107,16 @@ export function ReportForm({ onSubmit, onCancel }) {
             ? [formData.coordinates.lng, formData.coordinates.lat] // Convert to [longitude, latitude] array
             : [0, 0], // Default coordinates if none provided
           address: {
-            description: formData.location || 'Location not specified'
+            description: formData.location || 'Location not specified',
+            fullAddress: formData.fullAddress, // Include the full address if available
+            // Include structured address details if available
+            street: formData.addressDetails?.street || '',
+            houseNumber: formData.addressDetails?.houseNumber || '',
+            neighborhood: formData.addressDetails?.neighborhood || '',
+            city: formData.addressDetails?.city || '',
+            state: formData.addressDetails?.state || '',
+            country: formData.addressDetails?.country || '',
+            postcode: formData.addressDetails?.postcode || ''
           }
         }
       };
@@ -172,16 +191,134 @@ export function ReportForm({ onSubmit, onCancel }) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setFormData(prev => ({
-            ...prev,
-            coordinates: { lat: latitude, lng: longitude }, // Store as {lat, lng} for easy conversion
-            location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-          }));
+          
+          // Store coordinates for database
+          const coordinates = { lat: latitude, lng: longitude };
+          
+          // Get human-readable address using reverse geocoding
+          reverseGeocode(latitude, longitude)
+            .then(address => {
+              // Fetch the full address details for richer data
+              fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                  // Create an address object with structured data
+                  const addressData = data.address || {};
+                  
+                  setFormData(prev => ({
+                    ...prev,
+                    coordinates: coordinates, // Store as {lat, lng} for easy conversion
+                    location: address, // Human-readable location string
+                    fullAddress: address, // For backward compatibility
+                    addressDetails: {
+                      street: addressData.road || addressData.pedestrian || '',
+                      houseNumber: addressData.house_number || '',
+                      neighborhood: addressData.suburb || addressData.neighbourhood || addressData.quarter || '',
+                      city: addressData.city || addressData.town || addressData.village || '',
+                      state: addressData.state || addressData.county || '',
+                      country: addressData.country || '',
+                      postcode: addressData.postcode || ''
+                    }
+                  }));
+                })
+                .catch(error => {
+                  console.error('Error fetching detailed address:', error);
+                  // Continue with basic address
+                  setFormData(prev => ({
+                    ...prev,
+                    coordinates: coordinates,
+                    location: address,
+                    fullAddress: address
+                  }));
+                });
+            })
+            .catch(error => {
+              console.error('Error getting address from coordinates:', error);
+              // Fallback to a more user-friendly format if geocoding fails
+              setFormData(prev => ({
+                ...prev,
+                coordinates: coordinates,
+                location: "Detected location" // Fallback text if geocoding fails
+              }));
+            });
         },
         (error) => {
           console.error('Error detecting location:', error);
         }
       );
+    }
+  };
+  
+  // Helper function to convert coordinates to address using reverse geocoding
+  const reverseGeocode = async (latitude, longitude) => {
+    try {
+      console.log('Reverse geocoding coordinates:', latitude, longitude);
+      // Use Nominatim OpenStreetMap service for geocoding (free, no API key required)
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+      const data = await response.json();
+      
+      console.log('Geocoding response:', data);
+      
+      if (data && data.address) {
+        // Store the full data for future use
+        const fullAddressData = data.address;
+        
+        // Build a user-friendly address string with the most relevant parts
+        const addressComponents = [];
+        
+        // First priority: street address (most specific)
+        if (fullAddressData.road) {
+          let streetAddress = fullAddressData.road;
+          // Add house number if available
+          if (fullAddressData.house_number) {
+            streetAddress = `${fullAddressData.house_number} ${streetAddress}`;
+          }
+          addressComponents.push(streetAddress);
+        } else if (fullAddressData.pedestrian) {
+          addressComponents.push(fullAddressData.pedestrian);
+        } else if (fullAddressData.footway) {
+          addressComponents.push(fullAddressData.footway);
+        } else if (fullAddressData.path) {
+          addressComponents.push(fullAddressData.path);
+        }
+        
+        // Second priority: neighborhood or locality
+        if (fullAddressData.suburb) {
+          addressComponents.push(fullAddressData.suburb);
+        } else if (fullAddressData.neighbourhood) {
+          addressComponents.push(fullAddressData.neighbourhood);
+        } else if (fullAddressData.quarter) {
+          addressComponents.push(fullAddressData.quarter);
+        }
+        
+        // Third priority: city/town/village
+        if (fullAddressData.city) {
+          addressComponents.push(fullAddressData.city);
+        } else if (fullAddressData.town) {
+          addressComponents.push(fullAddressData.town);
+        } else if (fullAddressData.village) {
+          addressComponents.push(fullAddressData.village);
+        }
+        
+        // Format the address as a readable string
+        let formattedAddress = "Detected location";
+        if (addressComponents.length > 0) {
+          formattedAddress = addressComponents.join(', ');
+          console.log('Formatted address:', formattedAddress);
+        } else {
+          // If we don't have any good components, use a shortened version of display_name
+          formattedAddress = data.display_name.split(',').slice(0, 3).join(',').trim();
+          console.log('Using shortened display name:', formattedAddress);
+        }
+        
+        return formattedAddress;
+      }
+      
+      // Fallback if no good data
+      return "Detected location";
+    } catch (error) {
+      console.error('Geocoding failed:', error);
+      return "Detected location";
     }
   };
 
@@ -319,7 +456,15 @@ export function ReportForm({ onSubmit, onCancel }) {
                     <Input
                       id="location"
                       value={formData.location}
-                      onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                      onChange={(e) => {
+                        // When user manually types an address, clear the coordinates as they no longer match
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          location: e.target.value,
+                          // Clear coordinates if they're manually editing the address
+                          coordinates: e.target.value !== prev.location ? undefined : prev.coordinates 
+                        }));
+                      }}
                       placeholder="e.g., Main Street near Oak Avenue"
                       className="mt-1"
                     />

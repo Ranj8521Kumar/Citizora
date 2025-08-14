@@ -21,6 +21,44 @@ import {
 } from 'lucide-react';
 import { DebugReportsAnalyzer } from '../utils/DebugReportsAnalyzer';
 
+// Helper function to format a structured address
+const formatStructuredAddress = (address) => {
+  if (!address) return 'Location not specified';
+  
+  // Build address components in order of specificity
+  const parts = [];
+  
+  // Add street address with house number if available
+  if (address.street) {
+    const streetPart = address.houseNumber ? 
+      `${address.houseNumber} ${address.street}` : 
+      address.street;
+    parts.push(streetPart);
+  }
+  
+  // Add neighborhood if available
+  if (address.neighborhood) {
+    parts.push(address.neighborhood);
+  }
+  
+  // Add city/state
+  if (address.city) {
+    const locationPart = address.state ? 
+      `${address.city}, ${address.state}` : 
+      address.city;
+    parts.push(locationPart);
+  } else if (address.state) {
+    parts.push(address.state);
+  }
+  
+  // Fallback to description if we couldn't build anything useful
+  if (parts.length === 0 && address.description) {
+    return address.description;
+  }
+  
+  return parts.join(', ') || 'Location not specified';
+};
+
 export function Dashboard({ user, reports, onNavigate, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -585,12 +623,15 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
                                   {report.location?.address?.description || 
-                                   report.location?.description || 
-                                   (typeof report.location === 'string' ? report.location : 
-                                    report.location?.address ? 
-                                      (typeof report.location.address === 'string' ? 
-                                        report.location.address : 'Location available') :
-                                      'Location not specified')}
+                                   report.location?.description ||
+                                   (typeof report.location === 'string' ? report.location :
+                                    // Try to format a nice address from structured data
+                                    report.location?.address?.street ? 
+                                      formatStructuredAddress(report.location.address) :
+                                      // Fallback to coordinates if no structured address
+                                      report.location?.coordinates ? 
+                                        `Detected location` :
+                                        'Location not specified')}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
@@ -654,11 +695,15 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                         {selectedReport.location?.address?.description || 
                          selectedReport.location?.description || 
                          (typeof selectedReport.location === 'string' ? selectedReport.location : 
-                          selectedReport.location?.address ? 
-                            (typeof selectedReport.location.address === 'string' ? 
-                              selectedReport.location.address : 
-                              JSON.stringify(selectedReport.location.address).substring(0, 30) + '...') : 
-                            'Location not specified')}
+                          // Try to format a nice address from structured data
+                          selectedReport.location?.address?.street ? 
+                            formatStructuredAddress(selectedReport.location.address) :
+                            // Fallback to simpler display
+                            selectedReport.location?.address ? 
+                              (typeof selectedReport.location.address === 'string' ? 
+                                selectedReport.location.address : 
+                                'Detected location') : 
+                              'Location not specified')}
                       </span>
                     </div>
                     

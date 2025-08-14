@@ -22,6 +22,44 @@ import {
   Calendar
 } from 'lucide-react';
 
+// Helper function to format a structured address
+const formatStructuredAddress = (address) => {
+  if (!address) return 'Location not specified';
+  
+  // Build address components in order of specificity
+  const parts = [];
+  
+  // Add street address with house number if available
+  if (address.street) {
+    const streetPart = address.houseNumber ? 
+      `${address.houseNumber} ${address.street}` : 
+      address.street;
+    parts.push(streetPart);
+  }
+  
+  // Add neighborhood if available
+  if (address.neighborhood) {
+    parts.push(address.neighborhood);
+  }
+  
+  // Add city/state
+  if (address.city) {
+    const locationPart = address.state ? 
+      `${address.city}, ${address.state}` : 
+      address.city;
+    parts.push(locationPart);
+  } else if (address.state) {
+    parts.push(address.state);
+  }
+  
+  // Fallback to description if we couldn't build anything useful
+  if (parts.length === 0 && address.description) {
+    return address.description;
+  }
+  
+  return parts.join(', ') || 'Location not specified';
+};
+
 export function CommunityView({ reports, user, onLogin }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -608,7 +646,14 @@ export function CommunityView({ reports, user, onLogin }) {
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <MapPin className="w-3 h-3" />
-                                  {report.location?.address?.description || report.location?.description || 'Location not specified'}
+                                  {report.location?.address?.description || 
+                                   report.location?.description || 
+                                   (typeof report.location === 'string' ? report.location : 
+                                    report.location?.address?.street ? 
+                                      formatStructuredAddress(report.location.address) :
+                                      report.location?.coordinates ? 
+                                        `Detected location` :
+                                        'Location not specified')}
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
@@ -667,7 +712,16 @@ export function CommunityView({ reports, user, onLogin }) {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedReport.location?.address?.description || selectedReport.location?.description || 'Location not specified'}</span>
+                      <span>
+                        {selectedReport.location?.address?.description || 
+                         selectedReport.location?.description || 
+                         (typeof selectedReport.location === 'string' ? selectedReport.location : 
+                          selectedReport.location?.address?.street ? 
+                            formatStructuredAddress(selectedReport.location.address) :
+                            selectedReport.location?.coordinates ? 
+                              `Detected location` :
+                              'Location not specified')}
+                      </span>
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">

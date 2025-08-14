@@ -2,6 +2,8 @@
 
 CivicConnect is a comprehensive civic issue reporting and management platform that connects citizens, field employees, and administrators to efficiently address community issues. The platform provides real-time communication, location-based reporting, and streamlined workflow management for municipal operations.
 
+![System design and Architecture](System%20design%20and%20Architecture.png)
+
 ## Project Structure
 
 The project is organized into four main components:
@@ -62,7 +64,7 @@ The project is organized into four main components:
 - **Testing**: Jest for unit and integration tests
 
 ### Frontend
-- **Framework**: React 19 with Vite build tool
+- **Framework**: React with Vite build tool
 - **Styling**: Tailwind CSS with custom design system
 - **UI Components**: Radix UI primitives with custom components
 - **Icons**: Lucide React for consistent iconography
@@ -71,6 +73,8 @@ The project is organized into four main components:
 - **State Management**: React Context and hooks
 - **Routing**: React Router for navigation
 - **Real-time**: Socket.IO client for live updates
+- **PWA Support**: Service workers for offline functionality
+- **Geo-location**: Mapbox for location-based features
 
 ### Development Tools
 - **Package Manager**: npm
@@ -94,8 +98,8 @@ The project is organized into four main components:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/civic-connect.git
-cd civic-connect
+git clone https://github.com/Ranj8521Kumar/CivicConnect.git
+cd CivicConnect
 ```
 
 2. **Install server dependencies**
@@ -124,7 +128,7 @@ npm install
 
 ### Configuration
 
-1. **Server Environment Variables** (`server/.env`)
+1. **Server Environment Variables** (create `server/.env`)
 ```env
 PORT=5000
 NODE_ENV=development
@@ -180,6 +184,31 @@ The applications will be available at:
 - **User App**: http://localhost:5174
 - **Employee App**: http://localhost:5175
 
+### Script Utilities
+
+The server directory contains several useful scripts:
+
+```bash
+cd server
+# Create admin user
+node scripts/create-admin.js
+
+# Create field worker account
+node scripts/create-field-worker.js
+
+# Generate test reports
+node scripts/create-test-reports.js
+
+# Check existing reports
+node scripts/check-reports.js
+
+# Generate test notifications
+node scripts/create-test-notifications.js
+
+# Test email configuration
+node scripts/test-email.js
+```
+
 ## API Documentation
 
 The API documentation is available at `/api-docs` when running the server. The API includes:
@@ -202,26 +231,40 @@ CivicConnect/
 │   │   ├── models/        # MongoDB schemas
 │   │   ├── middleware/    # Custom middleware
 │   │   └── utils/         # Utility functions
-│   └── tests/             # API tests
+│   ├── tests/             # API tests
+│   ├── scripts/           # Utility scripts
+│   └── docs/              # API documentation
 ├── admin/                  # Admin panel
 │   ├── src/
 │   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
+│   │   │   ├── Analytics/ # Analytics components
+│   │   │   ├── Auth/      # Authentication components
+│   │   │   ├── Dashboard/ # Dashboard components
+│   │   │   ├── Layout/    # Layout components
+│   │   │   └── Users/     # User management components
+│   │   ├── services/      # API services
 │   │   └── utils/         # Utility functions
 │   └── public/            # Static assets
 ├── users/                  # Citizen app
 │   ├── src/
 │   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
+│   │   ├── services/      # API services
 │   │   └── utils/         # Utility functions
 │   └── public/            # Static assets
 ├── employees/              # Field worker app
 │   ├── src/
 │   │   ├── components/    # React components
-│   │   ├── pages/         # Page components
+│   │   │   ├── CameraInterface.jsx  # Camera functionality
+│   │   │   ├── MapView.jsx          # Map integration
+│   │   │   ├── OfflineIndicator.jsx # Offline support
+│   │   │   ├── PhotoCapture.jsx     # Photo capture
+│   │   │   ├── ReportDetail.jsx     # Report details
+│   │   │   ├── StatusUpdate.jsx     # Status updates
+│   │   │   └── TaskDashboard.jsx    # Task management
+│   │   ├── services/      # API services
 │   │   └── utils/         # Utility functions
 │   └── public/            # Static assets
-└── docs/                   # Documentation
+└── docs/                   # Project documentation
 ```
 
 ### Key Features Implemented
@@ -249,13 +292,29 @@ CivicConnect/
 
 ## Testing
 
-Run tests for the server:
+The project includes comprehensive test suites:
+
 ```bash
+# Run server unit and integration tests
 cd server
 npm test
+
+# Run specific test suites
+npm run test:integration
+npm run test:unit
+
+# Generate test coverage report
+npm run test:coverage
 ```
 
+Testing frameworks and tools:
+- Jest for test runner and assertions
+- Supertest for HTTP assertions
+- MongoDB Memory Server for isolated database testing
+
 ## Deployment
+
+Detailed deployment instructions are available in each application's directory in the `DEPLOYMENT.md` file.
 
 ### Production Build
 Each frontend application can be built for production:
@@ -264,8 +323,30 @@ cd [admin|users|employees]
 npm run build
 ```
 
-### Environment Setup
-Ensure all environment variables are properly configured for production deployment.
+The build output will be in the `dist` directory and can be served with any static file server.
+
+### Deployment Options
+
+1. **Vercel Deployment** (recommended for frontend apps)
+   - Configure with vercel.json (already included)
+   - Connect GitHub repository to Vercel
+   - Set up environment variables
+
+2. **Traditional Hosting**
+   - Build the application
+   - Upload dist directory to web server
+   - Configure server for SPA routing
+
+3. **Docker Deployment**
+   - Docker configuration files are provided
+   - Build and run containers for each component
+
+4. **Server Deployment**
+   - Deploy to Node.js hosting service (Heroku, DigitalOcean, etc.)
+   - Set up MongoDB Atlas for database
+   - Configure environment variables
+
+For more details, see the `DEPLOYMENT.md` file in each application directory.
 
 ## Contributing
 
@@ -275,10 +356,31 @@ Ensure all environment variables are properly configured for production deployme
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Documentation
+
+Additional documentation is available in the project:
+
+- **API Documentation**: Server API endpoints and usage (`server/docs/admin-api.md`)
+- **Postman Collections**: Test collections for all API endpoints (`server/*.postman_collection.json`)
+- **Testing Guide**: Guide for using Postman collections (`server/docs/postman-testing-guide.md`)
+- **Technical Appendix**: Detailed technical information (`CivicConnect_Technical_Appendix.md`)
+- **Research Paper**: Research behind the project (`CivicConnect_Research_Paper.md`)
+- **Image Guide**: Visual design guidelines (`CivicConnect_Image_Guide.md`)
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Support
 
-For support and questions, please open an issue in the GitHub repository or contact the development team.
+For support and questions, please open an issue in the GitHub repository or contact the development team at support@civicconnect.com.
+
+## Project Status
+
+Last updated: August 14, 2025
+
+Current development focus:
+- Enhancing offline capabilities in the employee app
+- Improving analytics dashboard in the admin panel
+- Adding real-time notification features
+- Implementing accessibility improvements across all applications

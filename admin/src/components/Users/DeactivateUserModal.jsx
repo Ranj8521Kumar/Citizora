@@ -28,24 +28,23 @@ export const DeactivateUserModal = ({ user, open, onOpenChange, onSuccess }) => 
     setIsDeleting(true);
     
     try {
-      // Call the API to deactivate the user (soft delete)
-      const result = await apiService.deleteUser(user.id);
+      console.log(`Deactivating user ${user.name} (${user.id})`);
+      
+      // Call the API to deactivate the user (set isActive to false)
+      const result = await apiService.toggleUserStatus(user.id, false);
       
       console.log('User deactivation result:', result);
       
-      if (result.softDelete) {
-        showToast({
-          title: 'Success',
-          message: 'User has been deactivated successfully',
-          type: 'success'
-        });
-      } else {
-        showToast({
-          title: 'Success',
-          message: 'User deactivated successfully',
-          type: 'success'
-        });
+      // Persist in localStorage for development/demo
+      if (window.location.hostname === 'localhost') {
+        localStorage.setItem(`user_${user.id}_status`, 'inactive');
       }
+      
+      showToast({
+        title: 'Success',
+        message: 'User has been deactivated successfully',
+        type: 'success'
+      });
       
       onSuccess?.(user.id);
       onOpenChange(false);

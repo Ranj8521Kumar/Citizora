@@ -24,10 +24,28 @@ import {
   RefreshCw,
   Ban,
   UserCog,
-  Wrench
+  Wrench,
+  FileSpreadsheet,
+  FileText
 } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '../ui/dropdown-menu.jsx';
 import apiService from '../../services/api.js';
 import { AddUserModal } from './AddUserModal.jsx';
+import { UserProfileModal } from './UserProfileModal.jsx';
+import { EditUserModal } from './EditUserModal.jsx';
+import { SendMessageModal } from './SendMessageModal.jsx';
+import { DeactivateUserModal } from './DeactivateUserModal.jsx';
+import { ActivateUserModal } from './ActivateUserModal.jsx';
+import { StatusToggleButton } from './StatusToggleButton.jsx';
+import { showToast } from '../../utils/toast.js';
+import { downloadCSV, downloadJSON } from '../../utils/csvExport.js';
+import { ExportButton } from '../ui/export-button.jsx';
 
 // Default role stats for loading state
 const defaultRoleStats = [
@@ -61,6 +79,384 @@ export const UserManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [actionInProgress, setActionInProgress] = useState(false);
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isUserProfileModalOpen, setIsUserProfileModalOpen] = useState(false);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [isSendMessageModalOpen, setIsSendMessageModalOpen] = useState(false);
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+  const [isActivateUserModalOpen, setIsActivateUserModalOpen] = useState(false);
+  
+  // Get export data from users
+  const getExportData = (users) => {
+    return users.map(user => ({
+      ID: user.id,
+      Name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      Email: user.email || '',
+      Phone: user.phone || '',
+      Role: user.role || '',
+      Status: user.status || '',
+      Department: user.department || '',
+      LastActive: user.lastActive ? new Date(user.lastActive).toLocaleDateString() : 'Never',
+      RegisteredOn: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'
+    }));
+  };
+  
+  // Get JSON export data
+  const getJsonExportData = (users) => {
+    return users.map(user => ({
+      id: user.id,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      email: user.email || '',
+      phone: user.phone || '',
+      role: user.role || '',
+      status: user.status || '',
+      department: user.department || '',
+      lastActive: user.lastActive || null,
+      registeredOn: user.createdAt || null
+    }));
+  };
+  
+  // Handle export of all users as CSV
+  const handleExportAllUsersCSV = () => {
+    if (!filteredUsers || filteredUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(filteredUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-all-users-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} users exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of all users as JSON
+  const handleExportAllUsersJSON = () => {
+    if (!filteredUsers || filteredUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(filteredUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-all-users-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} users exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of citizens as CSV
+  const handleExportCitizensCSV = () => {
+    const citizens = filteredUsers.filter(user => user.role === 'Citizen');
+    if (!citizens || citizens.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No citizen data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(citizens);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-citizens-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} citizens exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of citizens as JSON
+  const handleExportCitizensJSON = () => {
+    const citizens = filteredUsers.filter(user => user.role === 'Citizen');
+    if (!citizens || citizens.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No citizen data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(citizens);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-citizens-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} citizens exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of staff as CSV
+  const handleExportStaffCSV = () => {
+    const staff = filteredUsers.filter(user => user.role === 'Administrator' || user.role === 'Field Worker');
+    if (!staff || staff.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No staff data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(staff);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-staff-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} staff members exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of staff as JSON
+  const handleExportStaffJSON = () => {
+    const staff = filteredUsers.filter(user => user.role === 'Administrator' || user.role === 'Field Worker');
+    if (!staff || staff.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No staff data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(staff);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-staff-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} staff members exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of inactive users as CSV
+  const handleExportInactiveUsersCSV = () => {
+    const inactiveUsers = filteredUsers.filter(user => user.status === 'Inactive');
+    if (!inactiveUsers || inactiveUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No inactive user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getExportData(inactiveUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-inactive-users-${timestamp}.csv`;
+    
+    // Download the CSV file
+    downloadCSV(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} inactive users exported as CSV`,
+      type: 'success'
+    });
+  };
+  
+  // Handle export of inactive users as JSON
+  const handleExportInactiveUsersJSON = () => {
+    const inactiveUsers = filteredUsers.filter(user => user.status === 'Inactive');
+    if (!inactiveUsers || inactiveUsers.length === 0) {
+      showToast({
+        title: 'Export Failed',
+        message: 'No inactive user data available to export',
+        type: 'error'
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = getJsonExportData(inactiveUsers);
+    
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const filename = `civic-connect-inactive-users-${timestamp}.json`;
+    
+    // Download the JSON file
+    downloadJSON(exportData, filename);
+    
+    showToast({
+      title: 'Export Successful',
+      message: `${exportData.length} inactive users exported as JSON`,
+      type: 'success'
+    });
+  };
+  
+  // Handle deactivate user confirmation - this is called after the modal success
+  const handleDeleteUser = async (userId) => {
+    if (!userId) {
+      showToast({
+        title: 'Error',
+        message: 'User ID is missing. Cannot deactivate user.',
+        type: 'error'
+      });
+      return;
+    }
+    
+    try {
+      setActionInProgress(true);
+      
+      // Update local state - set user status to Inactive
+      setUserData(prev => prev.map(user => 
+        user.id === userId 
+          ? {...user, status: 'Inactive'} 
+          : user
+      ));
+      
+      // Persist in localStorage for development/demo
+      if (window.location.hostname === 'localhost') {
+        localStorage.setItem(`user_${userId}_status`, 'inactive');
+      }
+      
+      // Update role stats without full refresh
+      const updatedUsers = userData.map(u => 
+        u.id === userId ? {...u, status: 'Inactive'} : u
+      );
+      
+      const adminCount = updatedUsers.filter(u => u.role === 'Administrator').length;
+      const fieldWorkerCount = updatedUsers.filter(u => u.role === 'Field Worker').length;
+      const citizenCount = updatedUsers.filter(u => u.role === 'Citizen').length;
+      const inactiveCount = updatedUsers.filter(u => u.status === 'Inactive').length;
+      
+      setRoleStats([
+        { role: 'Administrators', count: adminCount, growth: '+5%', color: 'text-blue-600', icon: Shield },
+        { role: 'Field Workers', count: fieldWorkerCount, growth: '+12%', color: 'text-green-600', icon: Wrench },
+        { role: 'Citizens', count: citizenCount, growth: '+18%', color: 'text-amber-600', icon: User },
+        { role: 'Inactive Users', count: inactiveCount, growth: '0%', color: 'text-gray-600', icon: Clock }
+      ]);
+      
+      console.log(`User ${userId} has been deactivated and stats updated`);
+    } catch (error) {
+      console.error('Error processing user deactivation:', error);
+      showToast({
+        title: 'Warning',
+        message: 'User was deactivated but data refresh failed. Please refresh the page.',
+        type: 'warning'
+      });
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+  
+  // Handle activate user confirmation - this is called after the modal success
+  const handleActivateUser = async (userId) => {
+    if (!userId) {
+      showToast({
+        title: 'Error',
+        message: 'User ID is missing. Cannot activate user.',
+        type: 'error'
+      });
+      return;
+    }
+    
+    try {
+      setActionInProgress(true);
+      
+      // Update local state - set user status to Active
+      setUserData(prev => prev.map(user => 
+        user.id === userId 
+          ? {...user, status: 'Active'} 
+          : user
+      ));
+      
+      // Persist in localStorage for development/demo
+      if (window.location.hostname === 'localhost') {
+        localStorage.setItem(`user_${userId}_status`, 'active');
+      }
+      
+      // Update role stats without full refresh
+      const updatedUsers = userData.map(u => 
+        u.id === userId ? {...u, status: 'Active'} : u
+      );
+      
+      const adminCount = updatedUsers.filter(u => u.role === 'Administrator').length;
+      const fieldWorkerCount = updatedUsers.filter(u => u.role === 'Field Worker').length;
+      const citizenCount = updatedUsers.filter(u => u.role === 'Citizen').length;
+      const inactiveCount = updatedUsers.filter(u => u.status === 'Inactive').length;
+      
+      setRoleStats([
+        { role: 'Administrators', count: adminCount, growth: '+5%', color: 'text-blue-600', icon: Shield },
+        { role: 'Field Workers', count: fieldWorkerCount, growth: '+12%', color: 'text-green-600', icon: Wrench },
+        { role: 'Citizens', count: citizenCount, growth: '+18%', color: 'text-amber-600', icon: User },
+        { role: 'Inactive Users', count: inactiveCount, growth: '0%', color: 'text-gray-600', icon: Clock }
+      ]);
+      
+      console.log(`User ${userId} has been activated and stats updated`);
+    } catch (error) {
+      console.error('Error processing user activation:', error);
+      showToast({
+        title: 'Warning',
+        message: 'User was activated but data refresh failed. Please refresh the page.',
+        type: 'warning'
+      });
+    } finally {
+      setActionInProgress(false);
+    }
+  };
   
   // Function to fetch users data
   const fetchUsers = async () => {
@@ -79,6 +475,15 @@ export const UserManagement = () => {
             console.warn('User missing ID:', user);
           }
           
+          // Debug log for active property
+          console.log(`User ${user.email} active status:`, {
+            active: user.active,
+            isActive: user.isActive,
+            status: user.status,
+            id: user.id || user._id || user.userId,
+            rawUser: user
+          });
+          
           // Map backend roles to frontend display roles
           let displayRole = 'Citizen';
           if (user.role === 'admin') {
@@ -89,15 +494,33 @@ export const UserManagement = () => {
             displayRole = 'Citizen';
           }
           
+          // Get user ID
+          const userId = user.id || user._id || user.userId || '';
+          
+          // Check if we have a persisted status in localStorage (for development/demo)
+          const persistedStatus = window.location.hostname === 'localhost' 
+            ? localStorage.getItem(`user_${userId}_status`) 
+            : null;
+            
+          // Determine status - priority: localStorage > active property > default Active
+          let userStatus = 'Active'; // Default
+          if (persistedStatus === 'inactive') {
+            userStatus = 'Inactive';
+          } else if (persistedStatus === 'active') {
+            userStatus = 'Active';
+          } else if (user.active === false) {
+            userStatus = 'Inactive';
+          }
+          
           return {
             // Check for different ID fields that might be used
-            id: user.id || user._id || user.userId || '',
+            id: userId,
             name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
             firstName: user.firstName || '',
             lastName: user.lastName || '',
             email: user.email || '',
             role: displayRole,
-            status: user.active ? 'Active' : 'Inactive',
+            status: userStatus,
             createdAt: user.createdAt || 'Unknown',
             lastLogin: user.lastLogin || 'Never',
             reports: user.reports || 0,
@@ -182,23 +605,66 @@ export const UserManagement = () => {
     try {
       setActionInProgress(true);
       const user = userData.find(u => u.id === userId);
-      const newStatus = user.status === 'Active' ? false : true;
+      if (!user) {
+        throw new Error("User not found");
+      }
       
-      await apiService.toggleUserStatus(userId, newStatus);
+      // If user is Active, set to Inactive (isActive=false)
+      // If user is Inactive, set to Active (isActive=true)
+      const isActive = user.status !== 'Active';
       
-      // Update local state
+      console.log(`Toggling user ${user.name} (${userId}) status to ${isActive ? 'Active' : 'Inactive'}`);
+      
+      // Call the API
+      const result = await apiService.toggleUserStatus(userId, isActive);
+      console.log('Toggle status response:', result);
+      
+      // Update local state immediately for responsive UI
       setUserData(prevUsers => 
         prevUsers.map(u => 
           u.id === userId 
-            ? {...u, status: newStatus ? 'Active' : 'Inactive'} 
+            ? {...u, status: isActive ? 'Active' : 'Inactive'} 
             : u
         )
       );
       
-      setActionInProgress(false);
+      // Persist in localStorage for development/demo
+      if (window.location.hostname === 'localhost') {
+        localStorage.setItem(`user_${userId}_status`, isActive ? 'active' : 'inactive');
+      }
+      
+      // Show success message
+      showToast({
+        title: 'Success',
+        message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+        type: 'success'
+      });
+      
+      // Update role stats without full refresh to avoid losing state
+      const updatedUsers = userData.map(u => 
+        u.id === userId ? {...u, status: isActive ? 'Active' : 'Inactive'} : u
+      );
+      
+      const adminCount = updatedUsers.filter(u => u.role === 'Administrator').length;
+      const fieldWorkerCount = updatedUsers.filter(u => u.role === 'Field Worker').length;
+      const citizenCount = updatedUsers.filter(u => u.role === 'Citizen').length;
+      const inactiveCount = updatedUsers.filter(u => u.status === 'Inactive').length;
+      
+      setRoleStats([
+        { role: 'Administrators', count: adminCount, growth: '+5%', color: 'text-blue-600', icon: Shield },
+        { role: 'Field Workers', count: fieldWorkerCount, growth: '+12%', color: 'text-green-600', icon: Wrench },
+        { role: 'Citizens', count: citizenCount, growth: '+18%', color: 'text-amber-600', icon: User },
+        { role: 'Inactive Users', count: inactiveCount, growth: '0%', color: 'text-gray-600', icon: Clock }
+      ]);
+      
     } catch (err) {
       console.error('Error toggling user status:', err);
-      setError('Failed to update user status. Please try again.');
+      showToast({
+        title: 'Error',
+        message: 'Failed to update user status. Please try again.',
+        type: 'error'
+      });
+    } finally {
       setActionInProgress(false);
     }
   };
@@ -292,7 +758,20 @@ export const UserManagement = () => {
             lastName: user.lastName || '',
             email: user.email || '',
             role: displayRole,
-            status: user.active ? 'Active' : 'Inactive',
+            status: (() => {
+              // Get user ID
+              const userId = user.id || user._id || user.userId || '';
+              
+              // Check if we have a persisted status in localStorage (for development/demo)
+              const persistedStatus = window.location.hostname === 'localhost' 
+                ? localStorage.getItem(`user_${userId}_status`) 
+                : null;
+                
+              // Determine status - priority: localStorage > active property > default Active
+              if (persistedStatus === 'inactive') return 'Inactive';
+              if (persistedStatus === 'active') return 'Active';
+              return user.active === false ? 'Inactive' : 'Active';
+            })(),
             lastActive: user.lastActive || 'Never',
             reportsSubmitted: user.reportsSubmitted || 0,
             joinDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown',
@@ -484,10 +963,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportAllUsersCSV}
+                    onExportJSON={handleExportAllUsersJSON}
+                    buttonSize="sm"
+                    label="Export Users"
+                  />
                   <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add User
@@ -641,19 +1122,33 @@ export const UserManagement = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              aria-label={`Toggle status for ${user.name}`}
-                              onClick={() => handleToggleStatus(user.id)}
-                              disabled={actionInProgress}
-                            >
-                              {user.status === 'Active' ? (
-                                <Ban className="w-4 h-4 text-red-500" title="Deactivate user" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 text-green-500" title="Activate user" />
-                              )}
-                            </Button>
+                            {user.status === 'Active' ? (
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                className="bg-red-600 hover:bg-red-700 text-white" 
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setIsDeleteUserModalOpen(true);
+                                }}
+                                disabled={actionInProgress}
+                              >
+                                Deactivate
+                              </Button>
+                            ) : (
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white" 
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setIsActivateUserModalOpen(true);
+                                }}
+                                disabled={actionInProgress}
+                              >
+                                Activate
+                              </Button>
+                            )}
                             <Button 
                               variant="ghost" 
                               size="sm" 
@@ -678,13 +1173,66 @@ export const UserManagement = () => {
                             >
                               <UserCog className="w-4 h-4 text-blue-500" title="Change role" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              aria-label={`More options for ${user.name}`}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  aria-label={`More options for ${user.name}`}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsUserProfileModalOpen(true);
+                                  }}
+                                >
+                                  View Profile
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsEditUserModalOpen(true);
+                                  }}
+                                >
+                                  Edit User
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setSelectedUser(user);
+                                    setIsSendMessageModalOpen(true);
+                                  }}
+                                >
+                                  Send Message
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {user.status === 'Active' ? (
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsDeleteUserModalOpen(true);
+                                    }}
+                                  >
+                                    Deactivate User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    className="text-green-600"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsActivateUserModalOpen(true);
+                                    }}
+                                  >
+                                    Activate User
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -715,10 +1263,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportCitizensCSV}
+                    onExportJSON={handleExportCitizensJSON}
+                    buttonSize="sm"
+                    label="Export Citizens"
+                  />
                   <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add Citizen
@@ -859,13 +1409,54 @@ export const UserManagement = () => {
                               >
                                 <UserCog className="w-4 h-4 text-blue-500" title="Promote to Field Worker" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                aria-label={`More options for ${user.name}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    aria-label={`More options for ${user.name}`}
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsUserProfileModalOpen(true);
+                                    }}
+                                  >
+                                    View Profile
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsEditUserModalOpen(true);
+                                    }}
+                                  >
+                                    Edit User
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsSendMessageModalOpen(true);
+                                    }}
+                                  >
+                                    Send Message
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsDeleteUserModalOpen(true);
+                                    }}
+                                  >
+                                    Deactivate User
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -896,10 +1487,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportStaffCSV}
+                    onExportJSON={handleExportStaffJSON}
+                    buttonSize="sm"
+                    label="Export Staff"
+                  />
                   <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add Staff
@@ -1065,13 +1658,54 @@ export const UserManagement = () => {
                               >
                                 <UserCog className="w-4 h-4 text-blue-500" title="Change role" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                aria-label={`More options for ${user.name}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    aria-label={`More options for ${user.name}`}
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsUserProfileModalOpen(true);
+                                    }}
+                                  >
+                                    View Profile
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsEditUserModalOpen(true);
+                                    }}
+                                  >
+                                    Edit User
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsSendMessageModalOpen(true);
+                                    }}
+                                  >
+                                    Send Message
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsDeleteUserModalOpen(true);
+                                    }}
+                                  >
+                                    Deactivate Staff
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1102,10 +1736,12 @@ export const UserManagement = () => {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm">
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                  <ExportButton
+                    onExportCSV={handleExportInactiveUsersCSV}
+                    onExportJSON={handleExportInactiveUsersJSON}
+                    buttonSize="sm"
+                    label="Export Inactive"
+                  />
                   <Button variant="outline" size="sm" onClick={() => handleRefresh()}>
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Refresh
@@ -1245,13 +1881,54 @@ export const UserManagement = () => {
                               >
                                 <UserCog className="w-4 h-4 text-blue-500" title="Change role" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                aria-label={`More options for ${user.name}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    aria-label={`More options for ${user.name}`}
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsUserProfileModalOpen(true);
+                                    }}
+                                  >
+                                    View Profile
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsEditUserModalOpen(true);
+                                    }}
+                                  >
+                                    Edit User
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsSendMessageModalOpen(true);
+                                    }}
+                                  >
+                                    Contact User
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsDeleteUserModalOpen(true);
+                                    }}
+                                  >
+                                    Deactivate User
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1279,6 +1956,59 @@ export const UserManagement = () => {
       onSuccess={() => {
         fetchUsers();
       }}
+    />
+
+    {/* User Profile Modal */}
+    <UserProfileModal
+      user={selectedUser}
+      open={isUserProfileModalOpen}
+      onOpenChange={setIsUserProfileModalOpen}
+    />
+
+    {/* Edit User Modal */}
+    <EditUserModal
+      user={selectedUser}
+      open={isEditUserModalOpen}
+      onOpenChange={setIsEditUserModalOpen}
+      onSuccess={(updatedUser) => {
+        // Update user data in the state
+        setUserData(prev => prev.map(u => 
+          u.id === updatedUser.id ? { ...u, ...updatedUser } : u
+        ));
+      }}
+    />
+
+    {/* Send Message Modal */}
+    <SendMessageModal
+      user={selectedUser}
+      open={isSendMessageModalOpen}
+      onOpenChange={setIsSendMessageModalOpen}
+      onSuccess={() => {
+        // You could add additional actions here after a message is sent
+        showToast({
+          title: 'Message Sent',
+          message: `Your message has been delivered to ${selectedUser?.name}`,
+          type: 'success'
+        });
+      }}
+    />
+
+    {/* Deactivate User Modal */}
+    <DeactivateUserModal
+      user={selectedUser}
+      open={isDeleteUserModalOpen}
+      onOpenChange={setIsDeleteUserModalOpen}
+      onSuccess={(deletedUserId) => {
+        handleDeleteUser(deletedUserId);
+      }}
+    />
+
+    {/* Activate User Modal */}
+    <ActivateUserModal
+      user={selectedUser}
+      open={isActivateUserModalOpen}
+      onOpenChange={setIsActivateUserModalOpen}
+      onSuccess={(activatedUserId) => handleActivateUser(activatedUserId)}
     />
     </>
   );

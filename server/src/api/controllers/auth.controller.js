@@ -176,6 +176,43 @@ exports.forgotPassword = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
+/**
+ * Validate reset token without changing password
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
+exports.validateResetToken = async (req, res, next) => {
+  try {
+    // Get token from params
+    const { token } = req.params;
+
+    // Hash token
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    // Find user by token and check if token is still valid
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return next(new ApiError('Token is invalid or has expired', 400));
+    }
+
+    // Token is valid
+    res.status(200).json({
+      success: true,
+      message: 'Token is valid'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.resetPassword = async (req, res, next) => {
   try {
     // Get token from params

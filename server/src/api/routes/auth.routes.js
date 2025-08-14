@@ -30,6 +30,25 @@ router.post('/login', authController.login);
 router.post('/forgot-password', authController.forgotPassword);
 
 /**
+ * @route GET /api/auth/reset-password/:token
+ * @desc Handle direct browser visits to reset password URL
+ * @access Public
+ */
+router.get('/reset-password/:token', (req, res) => {
+  const { token } = req.params;
+  // Redirect to the frontend reset password page with the token
+  const frontendUrl = process.env.FRONTEND_CITIZEN_URL || 'http://localhost:5173';
+  res.redirect(`${frontendUrl}/?page=reset-password&token=${token}`);
+});
+
+/**
+ * @route GET /api/auth/validate-reset-token/:token
+ * @desc Validate reset token without changing password
+ * @access Public
+ */
+router.get('/validate-reset-token/:token', authController.validateResetToken);
+
+/**
  * @route PATCH /api/auth/reset-password/:token
  * @desc Reset password using token
  * @access Public

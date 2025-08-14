@@ -32,9 +32,9 @@ export function CommunityView({ reports, user, onLogin }) {
   // Ensure reports is an array and provide safety checks
   const safeReports = Array.isArray(reports) ? reports : [];
   
-  // Normalize report statuses for consistent handling (copied from Dashboard.jsx)
+  // Normalize report statuses and categories for consistent handling
   const normalizedReports = safeReports.map(report => {
-    if (!report) return { status: 'unknown' };
+    if (!report) return { status: 'unknown', category: 'other' };
     
     const normalizedReport = { ...report };
     
@@ -44,22 +44,65 @@ export function CommunityView({ reports, user, onLogin }) {
       normalizedReport.originalStatus = originalStatus; // keep original for reference
       normalizedReport.status = originalStatus.toString().replace(/_/g, '-').toLowerCase();
       
-      // Handle special cases
+      // Handle special cases for status
       if (normalizedReport.status === 'in-progress' || normalizedReport.status === 'inprogress') {
         normalizedReport.status = 'in-progress';
       } else if (normalizedReport.status === 'completed') {
         normalizedReport.status = 'resolved';
       } else if (['pending', ''].includes(normalizedReport.status)) {
         normalizedReport.status = 'submitted';
+      } else if (normalizedReport.status === 'assigned') {
+        normalizedReport.status = 'assigned';
       }
-      // Keep 'assigned' status as is - don't convert to 'submitted'
+      
+      // Normalize category
+      const originalCategory = report.category || report.type || '';
+      normalizedReport.originalCategory = originalCategory;
+      
+      // Convert to lowercase and normalize
+      const categoryStr = originalCategory.toString().toLowerCase().trim();
+      
+      // Map similar categories to our standard categories
+      if (!categoryStr || categoryStr === 'undefined' || categoryStr === 'null') {
+        normalizedReport.category = 'other';
+      } else if (categoryStr.includes('road') || categoryStr.includes('street') || categoryStr.includes('transport') || 
+                 categoryStr.includes('traffic') || categoryStr.includes('highway')) {
+        normalizedReport.category = 'roads';
+      } else if (categoryStr.includes('water') || categoryStr.includes('flood') || categoryStr.includes('leak') || 
+                 categoryStr.includes('drain') || categoryStr.includes('sewage')) {
+        normalizedReport.category = 'water';
+      } else if (categoryStr.includes('waste') || categoryStr.includes('trash') || categoryStr.includes('garbage') || 
+                 categoryStr.includes('litter') || categoryStr.includes('recycling')) {
+        normalizedReport.category = 'waste';
+      } else if (categoryStr.includes('electric') || categoryStr.includes('power') || categoryStr.includes('light') || 
+                 categoryStr.includes('outage')) {
+        normalizedReport.category = 'electricity';
+      } else if (categoryStr.includes('safe') || categoryStr.includes('security') || categoryStr.includes('crime') || 
+                 categoryStr.includes('hazard')) {
+        normalizedReport.category = 'safety';
+      } else if (categoryStr.includes('infrastructure') || categoryStr.includes('building') || 
+                 categoryStr.includes('facility') || categoryStr.includes('structure')) {
+        normalizedReport.category = 'infrastructure';
+      } else {
+        normalizedReport.category = 'other';
+      }
     } catch (err) {
       console.error('Error normalizing report:', err, report);
       normalizedReport.status = 'unknown';
+      normalizedReport.category = 'other';
     }
     
     return normalizedReport;
   });
+
+  // Debug log for categories
+  console.log('Reports with categories:', normalizedReports.map(r => ({ 
+    id: r._id, 
+    title: r.title,
+    category: r.category, 
+    originalCategory: r.originalCategory
+  })));
+  console.log('Current category filter:', categoryFilter);
 
   const filteredAndSortedReports = normalizedReports
     .filter(report => {
@@ -68,19 +111,44 @@ export function CommunityView({ reports, user, onLogin }) {
                            (report.location?.address?.description || report.location?.description || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
       const matchesCategory = categoryFilter === 'all' || report.category === categoryFilter;
+      
+      // Debug log for category filtering
+      if (categoryFilter !== 'all' && !matchesCategory) {
+        console.log('Report filtered out by category:', { 
+          id: report._id, 
+          title: report.title,
+          reportCategory: report.category, 
+          filterCategory: categoryFilter
+        });
+      }
+      
       return matchesSearch && matchesStatus && matchesCategory;
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'votes':
-          return b.votes - a.votes;
+        case 'votes': {
+          // Safely handle null/undefined votes
+          const aVotes = a.votes || 0;
+          const bVotes = b.votes || 0;
+          return bVotes - aVotes;
+        }
         case 'priority': {
-          const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
+          const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1, undefined: 0, null: 0 };
+          const aPriority = priorityOrder[a.priority || 'undefined'] || 0;
+          const bPriority = priorityOrder[b.priority || 'undefined'] || 0;
+          return bPriority - aPriority;
         }
         case 'recent':
-        default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        default: {
+          try {
+            const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            return bDate - aDate;
+          } catch (err) {
+            console.error('Error sorting by date:', err);
+            return 0;
+          }
+        }
       }
     });
 
@@ -88,6 +156,8 @@ export function CommunityView({ reports, user, onLogin }) {
     total: normalizedReports.length,
     resolved: normalizedReports.filter(r => r.status === 'resolved').length,
     inProgress: normalizedReports.filter(r => r.status === 'in-progress').length,
+    assigned: normalizedReports.filter(r => r.status === 'assigned').length,
+    closed: normalizedReports.filter(r => r.status === 'closed').length,
     totalVotes: normalizedReports.reduce((sum, r) => sum + (r.votes || 0), 0),
   };
 
@@ -99,18 +169,21 @@ export function CommunityView({ reports, user, onLogin }) {
     { id: 'electricity', name: 'Electricity' },
     { id: 'safety', name: 'Public Safety' },
     { id: 'infrastructure', name: 'Infrastructure' },
+    { id: 'other', name: 'Other' },
   ];
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'resolved':
-        return 'bg-secondary text-secondary-foreground';
+        return 'bg-green-500 text-white';
       case 'in-progress':
         return 'bg-orange-500 text-white';
       case 'submitted':
         return 'bg-blue-500 text-white';
       case 'closed':
-        return 'bg-muted text-muted-foreground';
+        return 'bg-gray-500 text-white';
+      case 'assigned':
+        return 'bg-purple-500 text-white';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -126,6 +199,8 @@ export function CommunityView({ reports, user, onLogin }) {
         return FileText;
       case 'closed':
         return AlertCircle;
+      case 'assigned':
+        return Users;
       default:
         return FileText;
     }
@@ -196,7 +271,24 @@ export function CommunityView({ reports, user, onLogin }) {
   };
 
   const getCategoryName = (categoryId) => {
-    return categories.find(cat => cat.id === categoryId)?.name || categoryId;
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) {
+      console.log('Category not found:', categoryId, 'Available categories:', categories.map(c => c.id));
+      return categoryId || 'Other';
+    }
+    return category.name;
+  };
+  
+  // Format status text for display (capitalize and replace hyphens with spaces)
+  const formatStatusText = (status) => {
+    if (!status) return 'Submitted';
+    
+    // Replace hyphens with spaces and capitalize each word
+    return status
+      .replace(/-/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   return (
@@ -209,7 +301,7 @@ export function CommunityView({ reports, user, onLogin }) {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -218,6 +310,18 @@ export function CommunityView({ reports, user, onLogin }) {
                   <p className="text-2xl font-bold">{stats.total}</p>
                 </div>
                 <FileText className="w-8 h-8 text-[rgb(30,64,175)]" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Assigned</p>
+                  <p className="text-2xl font-bold">{stats.assigned}</p>
+                </div>
+                <Users className="w-8 h-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -250,10 +354,10 @@ export function CommunityView({ reports, user, onLogin }) {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Community Votes</p>
-                  <p className="text-2xl font-bold">{stats.totalVotes}</p>
+                  <p className="text-sm text-muted-foreground">Closed</p>
+                  <p className="text-2xl font-bold">{stats.closed}</p>
                 </div>
-                <Users className="w-8 h-8 text-blue-500" />
+                <AlertCircle className="w-8 h-8 text-gray-500" />
               </div>
             </CardContent>
           </Card>
@@ -281,9 +385,10 @@ export function CommunityView({ reports, user, onLogin }) {
                     />
                   </div>
                   
-                  <div className="grid sm:grid-cols-3 gap-4">
+                  {/* All filters in one line */}
+                  <div className="flex flex-wrap items-center gap-3">
                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                      <SelectTrigger>
+                      <SelectTrigger className={`w-full sm:w-40 ${categoryFilter !== 'all' ? "border-blue-500 ring-1 ring-blue-500" : ""}`}>
                         <SelectValue placeholder="Category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -296,12 +401,13 @@ export function CommunityView({ reports, user, onLogin }) {
                     </Select>
                     
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger>
+                      <SelectTrigger className={`w-full sm:w-40 ${statusFilter !== 'all' ? "border-blue-500 ring-1 ring-blue-500" : ""}`}>
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="submitted">Submitted</SelectItem>
+                        <SelectItem value="assigned">Assigned</SelectItem>
                         <SelectItem value="in-progress">In Progress</SelectItem>
                         <SelectItem value="resolved">Resolved</SelectItem>
                         <SelectItem value="closed">Closed</SelectItem>
@@ -309,16 +415,95 @@ export function CommunityView({ reports, user, onLogin }) {
                     </Select>
                     
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger>
+                      <SelectTrigger className={`w-full sm:w-40 ${sortBy !== 'recent' ? "border-blue-500 ring-1 ring-blue-500" : ""}`}>
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="recent">Most Recent</SelectItem>
-                        <SelectItem value="votes">Most Voted</SelectItem>
+                        <SelectItem value="votes">Most Votes</SelectItem>
                         <SelectItem value="priority">Highest Priority</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {/* Filter indicators shown below dropdowns */}
+                  {(searchTerm || categoryFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'recent') && (
+                    <div className="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t">
+                      {searchTerm && (
+                        <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
+                          <span>Search: {searchTerm}</span>
+                          <button 
+                            onClick={() => setSearchTerm('')}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </Badge>
+                      )}
+                      
+                      {categoryFilter !== 'all' && (
+                        <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
+                          <span>Category: {getCategoryName(categoryFilter)}</span>
+                          <button 
+                            onClick={() => setCategoryFilter('all')}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </Badge>
+                      )}
+                      
+                      {statusFilter !== 'all' && (
+                        <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
+                          <span>Status: {formatStatusText(statusFilter)}</span>
+                          <button 
+                            onClick={() => setStatusFilter('all')}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </Badge>
+                      )}
+                      
+                      {sortBy !== 'recent' && (
+                        <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
+                          <span>Sort: {sortBy === 'votes' ? 'Most Votes' : 'Highest Priority'}</span>
+                          <button 
+                            onClick={() => setSortBy('recent')}
+                            className="ml-1 hover:bg-blue-200 rounded-full p-0.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </Badge>
+                      )}
+                      
+                      {(searchTerm || categoryFilter !== 'all' || statusFilter !== 'all' || sortBy !== 'recent') && (
+                        <button 
+                          onClick={() => {
+                            setSearchTerm('');
+                            setCategoryFilter('all');
+                            setStatusFilter('all');
+                            setSortBy('recent');
+                          }}
+                          className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+                        >
+                          Clear all filters
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               
@@ -328,13 +513,30 @@ export function CommunityView({ reports, user, onLogin }) {
                     <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2">No reports found</h3>
                     <p className="text-muted-foreground">
-                      Try adjusting your search criteria or filters
+                      {searchTerm && "Try removing search terms or "}
+                      {statusFilter !== 'all' && <span>Try removing status filter "{formatStatusText(statusFilter)}" or </span>}
+                      {categoryFilter !== 'all' && <span>Try removing category filter "{getCategoryName(categoryFilter)}" or </span>}
+                      adjust your filters
                     </p>
+                    <div className="mt-4">
+                      {(searchTerm || statusFilter !== 'all' || categoryFilter !== 'all') && (
+                        <Button 
+                          variant="outline"
+                          onClick={() => {
+                            setSearchTerm('');
+                            setStatusFilter('all');
+                            setCategoryFilter('all');
+                          }}
+                        >
+                          Clear all filters
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
                     {filteredAndSortedReports.map((report) => {
-                      const StatusIcon = getStatusIcon(report.status);
+                      const StatusIconComponent = getStatusIcon(report.status);
                       const reportId = report._id || report.id;
                       const hasVoted = votedReports.has(reportId);
                       
@@ -367,8 +569,8 @@ export function CommunityView({ reports, user, onLogin }) {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-2">
                                 <Badge className={getStatusColor(report.status)}>
-                                  <StatusIcon className="w-3 h-3 mr-1" />
-                                  {(report.status || 'submitted').replace('-', ' ')}
+                                  <StatusIconComponent className="w-3 h-3 mr-1" />
+                                  {formatStatusText(report.status)}
                                 </Badge>
                                 <Badge variant="outline">
                                   {getCategoryName(report.category)}
@@ -431,7 +633,8 @@ export function CommunityView({ reports, user, onLogin }) {
                   
                   <div className="flex gap-2">
                     <Badge className={getStatusColor(selectedReport.status)}>
-                      {(selectedReport.status || 'submitted').replace('-', ' ')}
+                      {React.createElement(getStatusIcon(selectedReport.status), { className: "w-3 h-3 mr-1" })}
+                      {formatStatusText(selectedReport.status)}
                     </Badge>
                     <Badge variant="outline">
                       {getCategoryName(selectedReport.category)}

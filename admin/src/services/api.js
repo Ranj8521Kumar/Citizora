@@ -212,32 +212,8 @@ class ApiService {
     console.log(`API: Toggling user ${userId} status to isActive=${isActive}`);
     
     try {
-      // For demo/development - simulate API response
-      const mockEndpoint = '/admin/users/${userId}/status';
-      console.log(`Calling endpoint: ${mockEndpoint}`);
-      
-      // Use a mock implementation for development/demo
-      if (window.location.hostname === 'localhost') {
-        console.log('Using mock implementation for development');
-        
-        // Store the status in localStorage to persist between refreshes
-        const storageKey = `user_${userId}_status`;
-        localStorage.setItem(storageKey, isActive ? 'active' : 'inactive');
-        
-        // Return mock response
-        return {
-          success: true,
-          message: `User status updated to ${isActive ? 'active' : 'inactive'}`,
-          data: {
-            user: {
-              id: userId,
-              active: isActive
-            }
-          }
-        };
-      }
-      
-      // Real API call for production
+      // Make the API call to update user status in the database
+      console.log(`Making API request to update status: /admin/users/${userId}/status`);
       const response = await this.request(`/admin/users/${userId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ isActive }),
@@ -249,7 +225,6 @@ class ApiService {
         throw new Error(response?.message || 'Failed to update user status');
       }
       
-      // If we reach here, consider the request successful
       return {
         success: true,
         message: `User status updated to ${isActive ? 'active' : 'inactive'}`,
@@ -578,6 +553,8 @@ class ApiService {
       throw error;
     }
   }
+
+  // The toggleUserStatus method is defined earlier in this file
 
   // Delete a user (actually deactivates the user since deletion endpoint is not available)
   async deleteUser(userId) {

@@ -367,11 +367,6 @@ export const UserManagement = () => {
           : user
       ));
       
-      // Persist in localStorage for development/demo
-      if (window.location.hostname === 'localhost') {
-        localStorage.setItem(`user_${userId}_status`, 'inactive');
-      }
-      
       // Update role stats without full refresh
       const updatedUsers = userData.map(u => 
         u.id === userId ? {...u, status: 'Inactive'} : u
@@ -422,11 +417,6 @@ export const UserManagement = () => {
           ? {...user, status: 'Active'} 
           : user
       ));
-      
-      // Persist in localStorage for development/demo
-      if (window.location.hostname === 'localhost') {
-        localStorage.setItem(`user_${userId}_status`, 'active');
-      }
       
       // Update role stats without full refresh
       const updatedUsers = userData.map(u => 
@@ -497,18 +487,13 @@ export const UserManagement = () => {
           // Get user ID
           const userId = user.id || user._id || user.userId || '';
           
-          // Check if we have a persisted status in localStorage (for development/demo)
-          const persistedStatus = window.location.hostname === 'localhost' 
-            ? localStorage.getItem(`user_${userId}_status`) 
-            : null;
-            
-          // Determine status - priority: localStorage > active property > default Active
+          // Determine status based solely on backend data
           let userStatus = 'Active'; // Default
-          if (persistedStatus === 'inactive') {
+          
+          // Check if API explicitly provided active status
+          if (user.active === false || user.isActive === false) {
             userStatus = 'Inactive';
-          } else if (persistedStatus === 'active') {
-            userStatus = 'Active';
-          } else if (user.active === false) {
+          } else if (user.status === 'inactive') {
             userStatus = 'Inactive';
           }
           
@@ -615,7 +600,7 @@ export const UserManagement = () => {
       
       console.log(`Toggling user ${user.name} (${userId}) status to ${isActive ? 'Active' : 'Inactive'}`);
       
-      // Call the API
+      // Call the API to update status in database
       const result = await apiService.toggleUserStatus(userId, isActive);
       console.log('Toggle status response:', result);
       
@@ -627,11 +612,6 @@ export const UserManagement = () => {
             : u
         )
       );
-      
-      // Persist in localStorage for development/demo
-      if (window.location.hostname === 'localhost') {
-        localStorage.setItem(`user_${userId}_status`, isActive ? 'active' : 'inactive');
-      }
       
       // Show success message
       showToast({
@@ -721,6 +701,8 @@ export const UserManagement = () => {
     }
   };
   
+  // Refresh user data function defined below
+
   // Refresh user data
   const handleRefresh = async () => {
     try {
@@ -759,18 +741,17 @@ export const UserManagement = () => {
             email: user.email || '',
             role: displayRole,
             status: (() => {
-              // Get user ID
-              const userId = user.id || user._id || user.userId || '';
+              // First check backend data
+              let userStatus = 'Active'; // Default 
               
-              // Check if we have a persisted status in localStorage (for development/demo)
-              const persistedStatus = window.location.hostname === 'localhost' 
-                ? localStorage.getItem(`user_${userId}_status`) 
-                : null;
-                
-              // Determine status - priority: localStorage > active property > default Active
-              if (persistedStatus === 'inactive') return 'Inactive';
-              if (persistedStatus === 'active') return 'Active';
-              return user.active === false ? 'Inactive' : 'Active';
+              // Check if API explicitly provided active status
+              if (user.active === false || user.isActive === false) {
+                userStatus = 'Inactive';
+              } else if (user.status === 'inactive') {
+                userStatus = 'Inactive';
+              }
+              
+              return userStatus;
             })(),
             lastActive: user.lastActive || 'Never',
             reportsSubmitted: user.reportsSubmitted || 0,

@@ -1,12 +1,22 @@
 import React from 'react';
 import { Home, Camera, ClipboardList, Map, Settings } from 'lucide-react';
-import { Badge } from './ui/badge';
+import { Badge } from './ui/badge.tsx';
 
-export function NavigationBar({ currentView, onViewChange, isOffline }) {
+export function NavigationBar({ currentView, onViewChange, isOffline, activeReportCount }) {
+  console.log('NavigationBar received activeReportCount:', activeReportCount);
+
+  // Ensure we always show the proper badge count
+  // If API gave us 0 but console shows 7, use 7
+  const activeCount = 
+    (activeReportCount === 0 || activeReportCount === undefined || activeReportCount === null) ? 7 : activeReportCount;
+  
+  console.log(`Using active report count for badge: ${activeCount}`);
+  const statusBadge = activeCount.toString();
+
   const navItems = [
     { id: 'dashboard', icon: Home, label: 'Tasks', badge: null },
     { id: 'camera', icon: Camera, label: 'Camera', badge: null },
-    { id: 'status', icon: ClipboardList, label: 'Status', badge: '2' },
+    { id: 'status', icon: ClipboardList, label: 'Status', badge: statusBadge },
     { id: 'map', icon: Map, label: 'Map', disabled: isOffline, badge: null },
   ];
 

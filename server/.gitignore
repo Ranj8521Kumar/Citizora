@@ -68,3 +68,7 @@ public/uploads/
 .stylelintcache
 .npm
 .history/
+
+
+src/api/routes/.env
+

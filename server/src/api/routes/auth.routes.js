@@ -2,10 +2,7 @@
  * Authentication Routes
  * Defines routes for user authentication
  */
-const dotenv = require('dotenv');
-
-// Load environment variables
-dotenv.config();
+require('dotenv').config();
 
 const express = require('express');
 const authController = require('../controllers/auth.controller');
@@ -41,7 +38,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.get('/reset-password/:token', (req, res) => {
   const { token } = req.params;
   // Redirect to the frontend reset password page with the token
-  const frontendUrl = process.env.FRONTEND_CITIZEN_URL;
+  const frontendUrl = process.env.FRONTEND_CITIZEN_URL || 'https://localhost:5173';
   res.redirect(`${frontendUrl}/?page=reset-password&token=${token}`);
 });
 

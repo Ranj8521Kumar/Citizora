@@ -45,7 +45,9 @@ export const NotificationPopover = ({ onViewAll }) => {
   
   const handleMarkAsRead = async (notificationId) => {
     try {
+      console.log('Marking notification as read:', notificationId);
       await apiService.markNotificationAsRead(notificationId);
+      console.log('Successfully marked as read');
       // Update the local state to mark notification as read
       setNotifications(prevNotifications => 
         prevNotifications.map(n => 

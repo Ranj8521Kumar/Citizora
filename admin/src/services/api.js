@@ -463,7 +463,41 @@ class ApiService {
 
   // Individual report operations
   async getReportDetails(reportId) {
-    return await this.request(`/reports/${reportId}`);
+    try {
+      console.log('Fetching report details for ID:', reportId);
+      const response = await this.request(`/reports/${reportId}`);
+      console.log('Report details response:', response);
+      
+      // Process the response to extract the actual report data
+      let reportData;
+      
+      if (response.data?.report) {
+        // Format: { data: { report: {...} } }
+        reportData = response.data.report;
+      } else if (response.data) {
+        // Format: { data: {...} }
+        reportData = response.data;
+      } else if (response.report) {
+        // Format: { report: {...} }
+        reportData = response.report;
+      } else {
+        // Format: {...} (direct report object)
+        reportData = response;
+      }
+      
+      // Additional normalization for the structure shown in the screenshot
+      if (reportData && typeof reportData === 'object') {
+        // If there's a report property inside the object that contains the actual report data
+        if (reportData.report && typeof reportData.report === 'object') {
+          reportData = reportData.report;
+        }
+      }
+      
+      return { data: reportData };
+    } catch (error) {
+      console.error('Error fetching report details:', error);
+      throw error;
+    }
   }
   
   async updateReport(reportId, reportData) {
@@ -670,6 +704,22 @@ class ApiService {
     } catch (error) {
       console.error('Error deleting notification:', error);
       throw error;
+    }
+  }
+
+  // Track that notification content was viewed (report details, etc.)
+  // Reuse the existing mark-as-read endpoint as there's no specific view-content endpoint
+  async viewNotificationContent(notificationId) {
+    try {
+      // Use the existing mark-as-read endpoint instead of a non-existent view-content endpoint
+      const response = await this.request(`/notifications/${notificationId}/read`, {
+        method: 'PATCH'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error updating notification view status:', error);
+      // Don't throw here as this is an enhancement, not a critical feature
+      return { success: false };
     }
   }
 }

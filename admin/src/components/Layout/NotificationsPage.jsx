@@ -126,19 +126,20 @@ export const NotificationsPage = () => {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2">
           <div>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>Manage your notifications and messages</CardDescription>
+            <CardTitle className="text-xl sm:text-2xl">Notifications</CardTitle>
+            <CardDescription className="text-sm">Manage your notifications and messages</CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto justify-end">
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleRefresh}
               disabled={loading}
+              className="text-xs sm:text-sm px-2 sm:px-3"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             {unreadCount > 0 && (
@@ -146,55 +147,56 @@ export const NotificationsPage = () => {
                 variant="default" 
                 size="sm"
                 onClick={handleMarkAllAsRead}
+                className="text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap"
               >
-                <CheckCheck className="w-4 h-4 mr-2" />
+                <CheckCheck className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                 Mark All as Read
               </Button>
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-6">
           <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between gap-4">
-              <TabsList>
-                <TabsTrigger value="all">
+            <div className="flex flex-col sm:flex-row justify-between gap-3">
+              <TabsList className="h-auto sm:h-10 flex-wrap">
+                <TabsTrigger value="all" className="text-xs sm:text-sm py-1 px-2 sm:px-3">
                   All
-                  <Badge variant="outline" className="ml-2">{notifications.length}</Badge>
+                  <Badge variant="outline" className="ml-1 sm:ml-2 text-[10px] sm:text-xs">{notifications.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="unread">
+                <TabsTrigger value="unread" className="text-xs sm:text-sm py-1 px-2 sm:px-3">
                   Unread
-                  <Badge variant="outline" className="ml-2">{unreadCount}</Badge>
+                  <Badge variant="outline" className="ml-1 sm:ml-2 text-[10px] sm:text-xs">{unreadCount}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="read">
+                <TabsTrigger value="read" className="text-xs sm:text-sm py-1 px-2 sm:px-3">
                   Read
-                  <Badge variant="outline" className="ml-2">{readCount}</Badge>
+                  <Badge variant="outline" className="ml-1 sm:ml-2 text-[10px] sm:text-xs">{readCount}</Badge>
                 </TabsTrigger>
               </TabsList>
-              <div className="flex gap-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-auto">
+                  <Search className="absolute left-2 top-2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-500" />
                   <Input 
                     type="search"
-                    placeholder="Search notifications..." 
-                    className="pl-9 w-[200px]"
+                    placeholder="Search..." 
+                    className="pl-7 sm:pl-9 text-xs sm:text-sm h-8 sm:h-10 sm:w-[200px]"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <div className="flex items-center gap-2">
-                      <Filter className="h-4 w-4" />
-                      <SelectValue placeholder="Filter by type" />
+                  <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] h-8 sm:h-10 text-xs sm:text-sm">
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <SelectValue placeholder="Filter by type" className="truncate" />
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All types</SelectItem>
-                    <SelectItem value="report_status">Report status</SelectItem>
-                    <SelectItem value="assignment">Assignment</SelectItem>
-                    <SelectItem value="feedback">Feedback</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                    <SelectItem value="message">Message</SelectItem>
+                    <SelectItem value="all" className="text-xs sm:text-sm">All types</SelectItem>
+                    <SelectItem value="report_status" className="text-xs sm:text-sm">Report status</SelectItem>
+                    <SelectItem value="assignment" className="text-xs sm:text-sm">Assignment</SelectItem>
+                    <SelectItem value="feedback" className="text-xs sm:text-sm">Feedback</SelectItem>
+                    <SelectItem value="system" className="text-xs sm:text-sm">System</SelectItem>
+                    <SelectItem value="message" className="text-xs sm:text-sm">Message</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -9,6 +9,7 @@ import { Progress } from './ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { MapComponent } from './MapComponent';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { useIsMobile } from './ui/use-mobile';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -36,6 +37,7 @@ const categories = [
 ];
 
 export function ReportForm({ onSubmit, onCancel }) {
+  const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState('category');
   const [formData, setFormData] = useState({
     title: '',
@@ -530,15 +532,17 @@ export function ReportForm({ onSubmit, onCancel }) {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold">Report an Issue</h1>
-            <Button variant="outline" onClick={onCancel}>
+            <h1 className="text-2xl md:text-3xl font-bold">Report an Issue</h1>
+            <Button variant="outline" size={isMobile ? "sm" : "default"} onClick={onCancel}>
               Cancel
             </Button>
           </div>
-          <Progress value={progress} className="mb-2" />
-          <p className="text-sm text-muted-foreground">
-            Step {currentStepIndex + 1} of {steps.length}
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <Progress value={progress} className="mb-2 sm:mb-0 sm:flex-1 sm:mr-4" />
+            <p className="text-sm text-muted-foreground whitespace-nowrap">
+              Step {currentStepIndex + 1} of {steps.length}
+            </p>
+          </div>
         </div>
 
         <Card className="mb-8">
@@ -670,27 +674,31 @@ export function ReportForm({ onSubmit, onCancel }) {
                     />
                   </div>
                   
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={detectLocation}
-                      className="flex items-center space-x-2"
-                    >
-                      <MapPin className="w-4 h-4" />
-                      <span>Use Current Location</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsManualLocationOpen(true)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                      <span>Manual Location</span>
-                    </Button>
+                  <div className="flex flex-row gap-2 sm:space-x-2 mb-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={detectLocation}
+                        className="flex items-center space-x-2"
+                        size="sm"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        <span>Use Current Location</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsManualLocationOpen(true)}
+                        className="flex items-center space-x-2"
+                        size="sm"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        <span>Manual Location</span>
+                      </Button>
+                    </div>
                     {formData.coordinates && (
-                      <Badge variant="secondary">Location detected</Badge>
+                      <Badge variant="secondary" className="self-start mt-1">Location detected</Badge>
                     )}
                   </div>
                   

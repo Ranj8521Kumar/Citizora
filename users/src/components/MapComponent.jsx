@@ -82,7 +82,7 @@ export function MapComponent({ initialLocation, onLocationSelected }) {
   }
 
   return (
-    <div className="map-container w-full h-80 rounded-lg overflow-hidden border">
+    <div className="map-container w-full h-64 md:h-80 rounded-lg overflow-hidden border">
       <MapContainer 
         center={mapCenter} 
         zoom={13} 

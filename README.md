@@ -2,8 +2,6 @@
 
 CivicConnect is a comprehensive civic issue reporting and management platform that connects citizens, field employees, and administrators to efficiently address community issues. The platform provides real-time communication, location-based reporting, and streamlined workflow management for municipal operations.
 
-![System design and Architecture](System%20design%20and%20Architecture.png)
-
 ## Copyright Notice and Legal Warning
 
 **© 2025 CivicConnect. All Rights Reserved.**
@@ -16,7 +14,9 @@ This project and all associated source code, documentation, designs, and assets 
 - This project may contain patented technology and trade secrets.
 - Unauthorized use may result in legal action, including but not limited to claims for damages and injunctive relief.
 
-For licensing inquiries, please contact: legal@civicconnect.com
+For licensing inquiries, please contact: ranjankumarpandit92054@gmail.com
+
+![System design and Architecture](System%20design%20and%20Architecture.png)
 
 ## Project Structure
 
@@ -364,11 +364,18 @@ For more details, see the `DEPLOYMENT.md` file in each application directory.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+**IMPORTANT LEGAL NOTICE:**
+
+This project is proprietary and **NOT** open for public contributions. All rights are reserved by the copyright holder.
+
+- **Do not fork, clone, or redistribute this project** without explicit written permission from the copyright holder.
+- **Do not create derivative works** based on this codebase.
+- **Do not submit pull requests** as they will be automatically rejected.
+- Unauthorized use, modification, or distribution of this software may result in legal action.
+
+Any attempt to contribute to this project without prior authorization constitutes a violation of copyright law and may subject the violator to civil and/or criminal penalties. The copyright holder reserves all rights to pursue legal remedies against unauthorized use.
+
+For inquiries regarding commercial licensing or authorized use, please contact legal@civicconnect.com.
 
 ## Documentation
 

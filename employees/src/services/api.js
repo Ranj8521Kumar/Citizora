@@ -286,3 +286,66 @@ export const checkServerConnection = async () => {
     return false;
   }
 };
+
+/**
+ * Get reports with geospatial data for map display
+ * @param {Object} params - Query parameters for filtering (status, category)
+ * @param {Object} location - Current location coordinates {latitude, longitude}
+ * @returns {Promise} Promise that resolves to the reports data with location
+ */
+export const getMapReports = async (params = {}, location = null) => {
+  const queryParams = new URLSearchParams();
+  
+  if (params.status) queryParams.append('status', params.status);
+  if (params.category) queryParams.append('category', params.category);
+  
+  // Add current location if available for sorting by proximity
+  if (location && location.latitude && location.longitude) {
+    queryParams.append('lat', location.latitude);
+    queryParams.append('lng', location.longitude);
+  }
+  
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  
+  try {
+    console.log(`Fetching map reports from: ${API_BASE_URL}/map/reports${queryString}`);
+    
+    // Try a couple of different endpoint formats since we're not sure which is correct
+    // /api/map/reports or /api/maps/reports
+    let response;
+    try {
+      // First try /map/reports (singular)
+      response = await fetch(`${API_BASE_URL}/map/reports${queryString}`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error(`First endpoint failed with status ${response.status}`);
+      }
+    } catch (firstError) {
+      console.warn('First API endpoint failed, trying alternative:', firstError);
+      
+      // Then try /maps/reports (plural)
+      response = await fetch(`${API_BASE_URL}/maps/reports${queryString}`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Both endpoints failed with status ${response.status}`);
+      }
+    }
+    
+    return handleResponse(response);
+  } catch (error) {
+    console.error('Failed to fetch map reports:', error);
+    
+    // Return a structured error response for better error handling
+    throw {
+      error: true,
+      message: error.message,
+      status: error.status || 500
+    };
+  }
+};

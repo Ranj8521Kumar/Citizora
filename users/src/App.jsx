@@ -46,14 +46,8 @@ export default function App() {
             setCurrentPage('reset-password');
             setLoading(false);
             
-            // Update URL to prevent refresh issues (optional)
-            if (window.history && window.history.replaceState) {
-              window.history.replaceState(
-                {}, 
-                document.title, 
-                `/?page=reset-password&token=${token}`
-              );
-            }
+            // Note: We're no longer modifying the URL here as it causes issues with redirection
+            // The full URL update will be handled by the ResetPassword component directly
             return;
           }
         }
@@ -356,13 +350,19 @@ export default function App() {
           <ResetPassword 
             token={resetToken}
             onComplete={(mode) => {
+              // Clear reset token
+              setResetToken(null);
+              
+              // Update app state based on mode
               if (mode === 'forgotPassword') {
                 openAuth('forgotPassword');
               } else {
                 openAuth('login');
               }
               setCurrentPage('landing');
-              setResetToken(null);
+              
+              // Note: We're now handling the full URL redirect directly in ResetPassword component
+              // with window.location.href = window.location.origin
             }} 
           />
         )}

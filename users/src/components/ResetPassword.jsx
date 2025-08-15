@@ -69,9 +69,14 @@ export function ResetPassword({ token, onComplete }) {
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
+        // Call the onComplete callback first
         if (onComplete) {
           onComplete();
         }
+        
+        // Force a complete URL change by directly setting location.href
+        // This is more reliable than history.pushState for clearing URL parameters
+        window.location.href = window.location.origin;
       }, 3000);
     } catch (error) {
       console.error('Failed to reset password:', error);

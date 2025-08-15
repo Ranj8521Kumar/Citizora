@@ -4,6 +4,20 @@ CivicConnect is a comprehensive civic issue reporting and management platform th
 
 ![System design and Architecture](System%20design%20and%20Architecture.png)
 
+## Copyright Notice and Legal Warning
+
+**© 2025 CivicConnect. All Rights Reserved.**
+
+This project and all associated source code, documentation, designs, and assets are protected by copyright law and are the exclusive property of the copyright holder. 
+
+**LEGAL WARNING:**
+- Unauthorized copying, distribution, modification, public display, or public performance of this project, in whole or in part, is strictly prohibited.
+- Use of this software without express written permission from the copyright holder is strictly prohibited.
+- This project may contain patented technology and trade secrets.
+- Unauthorized use may result in legal action, including but not limited to claims for damages and injunctive relief.
+
+For licensing inquiries, please contact: legal@civicconnect.com
+
 ## Project Structure
 
 The project is organized into four main components:

@@ -38,7 +38,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.get('/reset-password/:token', (req, res) => {
   const { token } = req.params;
   // Redirect to the frontend reset password page with the token
-  const frontendUrl = process.env.FRONTEND_CITIZEN_URL || 'https://localhost:5173';
+  const frontendUrl = 'https://civic-connect-users.vercel.app/' || 'http://localhost:5173/';
   res.redirect(`${frontendUrl}/?page=reset-password&token=${token}`);
 });
 

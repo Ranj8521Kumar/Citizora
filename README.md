@@ -16,7 +16,7 @@ This project and all associated source code, documentation, designs, and assets 
 
 For licensing inquiries, please contact: ranjankumarpandit92054@gmail.com
 
-[View Copyright Registration Certificate](./docs/copyright_certificate.pdf)
+[View Copyright Registration Certificate](https://github.com/Ranj8521Kumar/CivicConnect/raw/master/docs/copyright_certificate.pdf)
 
 ![System design and Architecture](System%20design%20and%20Architecture.png)
 

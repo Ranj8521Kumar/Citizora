@@ -1,9 +1,8 @@
 import { processImageArray } from '../utils/imageHelper';
 
-// Primary API endpoint
-const REMOTE_API_URL = 'https://civic-connect-backend-aq2a.onrender.com/api';
-// Fallback to local API for development
-const LOCAL_API_URL = 'http://localhost:3000/api';
+// API endpoints from environment variables
+const REMOTE_API_URL = import.meta.env.VITE_REMOTE_API_URL;
+const LOCAL_API_URL = import.meta.env.VITE_LOCAL_API_URL;
 
 class ApiService {
   constructor() {

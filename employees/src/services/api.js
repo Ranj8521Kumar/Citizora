@@ -3,8 +3,8 @@
  * Handles all API requests to the backend server
  */
 
-// Base URL for API requests - make sure this is the correct server URL
-const API_BASE_URL = 'https://civic-connect-backend-aq2a.onrender.com/api';
+// Base URL for API requests from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://civic-connect-backend-aq2a.onrender.com/api';
 
 // API token management
 let authToken = localStorage.getItem('auth_token');

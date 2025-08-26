@@ -1,6 +1,7 @@
 // API service for the admin panel
 
-const API_BASE_URL = 'https://civic-connect-backend-aq2a.onrender.com/api'; // Change to your actual backend URL
+// API endpoint from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://civic-connect-backend-aq2a.onrender.com/api';
 
 class ApiService {
   constructor() {

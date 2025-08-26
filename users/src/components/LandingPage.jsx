@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import apiService from '../services/api';
+import landingImage from '../assets/landing.png';
 
 export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
   // Ensure reports is an array and provide default values
@@ -124,7 +125,7 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
             </div>
             <div className="relative">
               <ImageWithFallback
-                src="/api/placeholder/600/400"
+                src={landingImage}
                 alt="Community members working together"
                 className="rounded-lg shadow-2xl"
                 width={600}

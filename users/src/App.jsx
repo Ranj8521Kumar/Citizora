@@ -315,6 +315,7 @@ export default function App() {
             onLogin={() => openAuth('login')}
             onRegister={() => openAuth('register')}
             reports={reports}
+            user={user}
           />
         )}
         

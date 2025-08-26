@@ -16,7 +16,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import apiService from '../services/api';
 import landingImage from '../assets/landing.png';
 
-export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
+export function LandingPage({ onNavigate, onLogin, onRegister, reports, user }) {
   // Ensure reports is an array and provide default values
   const safeReports = Array.isArray(reports) ? reports : [];
   const [activeCitizens, setActiveCitizens] = useState(0);
@@ -281,30 +281,65 @@ export function LandingPage({ onNavigate, onLogin, onRegister, reports }) {
       {/* CTA Section */}
       <section className="py-16 bg-primary text-white">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-            Ready to Make a Difference?
-          </h2>
-          <p className="text-xl mb-8 text-blue-100">
-            Join your neighbors in building a better community. Your voice matters.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              variant="secondary"
-              onClick={onRegister}
-              className="text-lg px-8 py-3"
-            >
-              Get Started Today
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={onLogin}
-              className="text-lg px-8 py-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              Sign In
-            </Button>
-          </div>
+          {user ? (
+            /* Thank you message for logged-in users */
+            <div>
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                Thank You for Being Part of Our Community!
+              </h2>
+              <p className="text-xl mb-8 text-blue-100">
+                Welcome back, {user.name || user.username || 'Citizen'}! Your contributions are making a real difference in our community.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg" 
+                  variant="secondary"
+                  onClick={() => onNavigate('report')}
+                  className="text-lg px-8 py-3"
+                >
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  Report New Issue
+                </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => onNavigate('dashboard')}
+                  className="text-lg px-8 py-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <TrendingUp className="w-5 h-5 mr-2" />
+                  View My Dashboard
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Original CTA for non-logged-in users */
+            <div>
+              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+                Ready to Make a Difference?
+              </h2>
+              <p className="text-xl mb-8 text-blue-100">
+                Join your neighbors in building a better community. Your voice matters.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg" 
+                  variant="secondary"
+                  onClick={onRegister}
+                  className="text-lg px-8 py-3"
+                >
+                  Get Started Today
+                </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={onLogin}
+                  className="text-lg px-8 py-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  Sign In
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </section>
     </div>

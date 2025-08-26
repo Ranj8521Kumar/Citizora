@@ -37,7 +37,7 @@ export function Header({ user, currentPage, onNavigate, onLogin, onLogout }) {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <div className="w-4 h-4 bg-white rounded-sm"></div>
               </div>
-              <span className="text-xl font-semibold text-primary">CivicConnect</span>
+              <span className="text-xl font-semibold text-primary">Citizora</span>
             </button>
           </div>
 

@@ -1,10 +1,10 @@
-# CivicConnect
+# Citizora
 
-CivicConnect is a comprehensive civic issue reporting and management platform that connects citizens, field employees, and administrators to efficiently address community issues. The platform provides real-time communication, location-based reporting, and streamlined workflow management for municipal operations.
+Citizora is a comprehensive civic issue reporting and management platform that connects citizens, field employees, and administrators to efficiently address community issues. The platform provides real-time communication, location-based reporting, and streamlined workflow management for municipal operations.
 
 ## Copyright Notice and Legal Warning
 
-**© 2025 CivicConnect. All Rights Reserved.**
+**© 2025 Citizora. All Rights Reserved.**
 
 This project and all associated source code, documentation, designs, and assets are protected by copyright law and are the exclusive property of the copyright holder. 
 
@@ -16,7 +16,7 @@ This project and all associated source code, documentation, designs, and assets 
 
 For licensing inquiries, please contact: ranjankumarpandit92054@gmail.com
 
-[View Copyright Registration Certificate](https://github.com/Ranj8521Kumar/CivicConnect/raw/master/docs/copyright_certificate.pdf)
+[View Copyright Registration Certificate](https://github.com/Ranj8521Kumar/Citizora/raw/master/docs/copyright_certificate.pdf)
 
 ![System design and Architecture](System%20design%20and%20Architecture.png)
 
@@ -114,8 +114,8 @@ The project is organized into four main components:
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/Ranj8521Kumar/CivicConnect.git
-cd CivicConnect
+git clone https://github.com/Ranj8521Kumar/Citizora.git
+cd Citizora
 ```
 
 2. **Install server dependencies**
@@ -148,7 +148,7 @@ npm install
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=mongodb://localhost:27017/civic-connect
+MONGODB_URI=mongodb://localhost:27017/citizora
 JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=7d
 CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -158,7 +158,7 @@ SMTP_HOST=smtp.example.com
 SMTP_PORT=587
 SMTP_USER=your_email@example.com
 SMTP_PASS=your_email_password
-EMAIL_FROM=noreply@civicconnect.com
+EMAIL_FROM=noreply@citizora.com
 MAPBOX_API_KEY=your_mapbox_api_key
 ```
 
@@ -240,7 +240,7 @@ The API documentation is available at `/api-docs` when running the server. The A
 
 ### Project Structure
 ```
-CivicConnect/
+Citizora/
 ├── server/                 # Backend API
 │   ├── src/
 │   │   ├── api/           # API routes and controllers
@@ -377,7 +377,7 @@ This project is proprietary and **NOT** open for public contributions. All right
 
 Any attempt to contribute to this project without prior authorization constitutes a violation of copyright law and may subject the violator to civil and/or criminal penalties. The copyright holder reserves all rights to pursue legal remedies against unauthorized use.
 
-For inquiries regarding commercial licensing or authorized use, please contact legal@civicconnect.com.
+For inquiries regarding commercial licensing or authorized use, please contact legal@citizora.com.
 
 ## Documentation
 
@@ -386,9 +386,9 @@ Additional documentation is available in the project:
 - **API Documentation**: Server API endpoints and usage (`server/docs/admin-api.md`)
 - **Postman Collections**: Test collections for all API endpoints (`server/*.postman_collection.json`)
 - **Testing Guide**: Guide for using Postman collections (`server/docs/postman-testing-guide.md`)
-- **Technical Appendix**: Detailed technical information (`CivicConnect_Technical_Appendix.md`)
-- **Research Paper**: Research behind the project (`CivicConnect_Research_Paper.md`)
-- **Image Guide**: Visual design guidelines (`CivicConnect_Image_Guide.md`)
+- **Technical Appendix**: Detailed technical information (`Citizora_Technical_Appendix.md`)
+- **Research Paper**: Research behind the project (`Citizora_Research_Paper.md`)
+- **Image Guide**: Visual design guidelines (`Citizora_Image_Guide.md`)
 
 ## License
 
@@ -396,11 +396,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For support and questions, please open an issue in the GitHub repository or contact the development team at support@civicconnect.com.
+For support and questions, please open an issue in the GitHub repository or contact the development team at support@citizora.com.
 
 ## Project Status
 
-Last updated: August 14, 2025
+Last updated: August 26, 2025
 
 Current development focus:
 - Enhancing offline capabilities in the employee app

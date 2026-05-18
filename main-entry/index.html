@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CivicConnect — Platform Hub</title>
+    <meta name="description" content="CivicConnect is a comprehensive digital platform bridging citizens and municipal authorities. Select your portal to get started." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+
+    <!-- ── Animated background particles ── -->
+    <div class="bg-particles" aria-hidden="true">
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+    </div>
+
+    <!-- ── Hero image overlay ── -->
+    <div class="hero-bg" aria-hidden="true"></div>
+
+    <!-- ── Main layout ── -->
+    <main class="page-wrapper">
+
+      <!-- ── Header / Brand ── -->
+      <header class="site-header">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">
+            <!-- Civic shield SVG -->
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 3L5 8.5V19C5 26.18 10.64 32.9 18 35C25.36 32.9 31 26.18 31 19V8.5L18 3Z" fill="url(#shieldGrad)" stroke="rgba(99,179,237,0.4)" stroke-width="1"/>
+              <path d="M13 18L16.5 21.5L23 15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <defs>
+                <linearGradient id="shieldGrad" x1="5" y1="3" x2="31" y2="35" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#3b82f6"/>
+                  <stop offset="1" stop-color="#1d4ed8"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">CivicConnect</span>
+            <span class="brand-tagline">Platform Hub</span>
+          </div>
+        </div>
+        <div class="header-badge">v2.0 Live</div>
+      </header>
+
+      <!-- ── Hero section ── -->
+      <section class="hero-section" aria-labelledby="hero-heading">
+        <div class="hero-eyebrow">Digital Civic Engagement</div>
+        <h1 id="hero-heading" class="hero-title">
+          One Platform.<br />
+          <span class="gradient-text">Three Portals.</span>
+        </h1>
+        <p class="hero-subtitle">
+          Choose your portal below to access the tools built for your role — from municipal administration to field operations and citizen services.
+        </p>
+      </section>
+
+      <!-- ── Portal Cards ── -->
+      <section class="portals-grid" aria-label="Application Portals">
+
+        <!-- Admin Portal -->
+        <a id="portal-admin" href="#" class="portal-card portal-admin" role="link" aria-label="Open Admin Portal">
+          <div class="card-glow card-glow--blue" aria-hidden="true"></div>
+          <div class="card-inner">
+            <div class="card-icon-wrap card-icon--blue" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2L3 7.5V16C3 22.08 7.84 27.72 14 29C20.16 27.72 25 22.08 25 16V7.5L14 2Z" fill="currentColor" opacity="0.15"/>
+                <path d="M14 2L3 7.5V16C3 22.08 7.84 27.72 14 29C20.16 27.72 25 22.08 25 16V7.5L14 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                <circle cx="14" cy="14" r="3" fill="currentColor"/>
+                <path d="M10 19c0-2.21 1.79-4 4-4s4 1.79 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-badge card-badge--blue">Administrator</div>
+              <h2 class="card-title">Admin Portal</h2>
+              <p class="card-desc">Full control over the CivicConnect platform — manage users, roles, analytics, reports, and system-wide configuration.</p>
+              <ul class="card-features" aria-label="Admin features">
+                <li>User & Role Management</li>
+                <li>Analytics Dashboard</li>
+                <li>Report Oversight</li>
+                <li>System Configuration</li>
+              </ul>
+            </div>
+            <div class="card-arrow" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+        </a>
+
+        <!-- Employees Portal -->
+        <a id="portal-employees" href="#" class="portal-card portal-employees" role="link" aria-label="Open Employees Portal">
+          <div class="card-glow card-glow--green" aria-hidden="true"></div>
+          <div class="card-inner">
+            <div class="card-icon-wrap card-icon--green" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="10" cy="9" r="4" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M4 22c0-3.31 2.69-6 6-6s6 2.69 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="20" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M18 22c0-2.76 1.79-5.11 4.3-5.81" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-badge card-badge--green">Field Workers</div>
+              <h2 class="card-title">Employee Portal</h2>
+              <p class="card-desc">Mobile-optimised tools for municipal field workers — view assignments, update task status, and coordinate with teams in real time.</p>
+              <ul class="card-features" aria-label="Employee features">
+                <li>Task Assignment View</li>
+                <li>Real-time Status Updates</li>
+                <li>GPS Location Services</li>
+                <li>Performance Tracking</li>
+              </ul>
+            </div>
+            <div class="card-arrow" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+        </a>
+
+        <!-- Users / Citizens Portal -->
+        <a id="portal-users" href="#" class="portal-card portal-users" role="link" aria-label="Open Citizens Portal">
+          <div class="card-glow card-glow--orange" aria-hidden="true"></div>
+          <div class="card-inner">
+            <div class="card-icon-wrap card-icon--orange" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 3C8.48 3 4 7.48 4 13c0 3.87 2.15 7.24 5.33 9.01L14 25l4.67-2.99C21.85 20.24 24 16.87 24 13c0-5.52-4.48-10-10-10Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                <circle cx="14" cy="13" r="3" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="card-content">
+              <div class="card-badge card-badge--orange">Citizens</div>
+              <h2 class="card-title">Citizen Portal</h2>
+              <p class="card-desc">Empowering citizens to report issues, track resolutions, engage with the community, and hold their municipality accountable.</p>
+              <ul class="card-features" aria-label="Citizen features">
+                <li>Issue Reporting</li>
+                <li>Live Status Tracking</li>
+                <li>Community Voting</li>
+                <li>Notifications & Feedback</li>
+              </ul>
+            </div>
+            <div class="card-arrow" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+        </a>
+
+      </section>
+
+      <!-- ── Stats bar ── -->
+      <section class="stats-bar" aria-label="Platform statistics">
+        <div class="stat-item">
+          <span class="stat-number">10K+</span>
+          <span class="stat-label">Concurrent Users</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-number">&lt;500ms</span>
+          <span class="stat-label">API Response</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-number">99.9%</span>
+          <span class="stat-label">Uptime Target</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-number">3</span>
+          <span class="stat-label">Integrated Portals</span>
+        </div>
+      </section>
+
+      <!-- ── Footer ── -->
+      <footer class="site-footer">
+        <p>© 2025 CivicConnect · Built for digital governance &amp; civic engagement</p>
+        <div class="footer-dots" aria-hidden="true">
+          <span class="dot dot--blue"></span>
+          <span class="dot dot--green"></span>
+          <span class="dot dot--orange"></span>
+        </div>
+      </footer>
+
+    </main>
+
+    <script src="main.js"></script>
+  </body>
+</html>

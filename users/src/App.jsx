@@ -9,6 +9,148 @@ import { ResetPassword } from './components/ResetPassword';
 import { Header } from './components/Header';
 import apiService from './services/api';
 import './utils/testConnection';
+import heroBg from './assets/hero-bg.png';
+
+/* ── Fixed full-window background system ─────────────────────────────────── */
+function GlobalBackground() {
+  return (
+    <>
+      {/* 1. City photo — fixed, covers 100vw × 100vh */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -20,
+          backgroundImage: `url(${heroBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+          width: '100vw',
+          height: '100vh',
+        }}
+      />
+
+      {/* 2. Dark overlay — keeps text readable */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -19,
+          background:
+            'linear-gradient(180deg, rgba(5,13,26,0.65) 0%, rgba(5,13,26,0.75) 60%, rgba(5,13,26,0.92) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 3. Subtle grid lines */}
+      <div
+        aria-hidden
+        className="bg-grid-lines"
+        style={{ position: 'fixed', inset: 0, zIndex: -18, pointerEvents: 'none' }}
+      />
+
+      {/* ── EDGE GLOWS (positive z-index, always on top, no pointer events) ── */}
+
+      {/* 4. Left edge — glowing blue bar */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '3px',
+          height: '100vh',
+          zIndex: 9998,
+          background: 'linear-gradient(180deg, transparent 0%, #4f8ef7 25%, #0aadde 75%, transparent 100%)',
+          boxShadow: '0 0 18px 6px rgba(79,142,247,0.75), 0 0 60px 20px rgba(79,142,247,0.35)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 5. Left ambient glow pool */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '30vw',
+          height: '100vh',
+          zIndex: 9997,
+          background: 'radial-gradient(ellipse at 0% 40%, rgba(79,142,247,0.20) 0%, transparent 60%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 6. Right edge — glowing cyan bar */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          width: '3px',
+          height: '100vh',
+          zIndex: 9998,
+          background: 'linear-gradient(180deg, transparent 0%, #0aadde 25%, #4f8ef7 75%, transparent 100%)',
+          boxShadow: '0 0 18px 6px rgba(10,173,222,0.75), 0 0 60px 20px rgba(10,173,222,0.35)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 7. Right ambient glow pool */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          width: '30vw',
+          height: '100vh',
+          zIndex: 9997,
+          background: 'radial-gradient(ellipse at 100% 60%, rgba(10,173,222,0.18) 0%, transparent 60%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 8. Bottom purple accent */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '70vw',
+          height: '35vh',
+          zIndex: 9997,
+          background: 'radial-gradient(ellipse at 50% 100%, rgba(167,139,250,0.14) 0%, transparent 65%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* 9. Top center blue shine */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '60vw',
+          height: '3px',
+          zIndex: 9998,
+          background: 'linear-gradient(90deg, transparent 0%, #4f8ef7 30%, #0aadde 50%, #4f8ef7 70%, transparent 100%)',
+          boxShadow: '0 0 16px 4px rgba(79,142,247,0.6)',
+          pointerEvents: 'none',
+        }}
+      />
+    </>
+  );
+}
+
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -275,17 +417,26 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'transparent' }}>
+        <GlobalBackground />
+        <div className="text-center" style={{ position: 'relative', zIndex: 1 }}>
+          <div
+            className="w-14 h-14 rounded-full mx-auto mb-5 animate-spin"
+            style={{
+              border: '2px solid rgba(79,142,247,0.15)',
+              borderTopColor: '#4f8ef7',
+              boxShadow: '0 0 20px rgba(79,142,247,0.4)',
+            }}
+          />
+          <p className="text-sm font-medium" style={{ color: 'hsl(215 20% 55%)' }}>Loading Citizora…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: 'transparent', position: 'relative' }}>
+      <GlobalBackground />
       <Header 
         user={user}
         currentPage={currentPage}
@@ -296,11 +447,18 @@ export default function App() {
       
       <main>
         {error && (
-          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 mx-4 mt-4 rounded-md">
-            {error}
-            <button 
+          <div
+            className="mx-4 mt-4 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-between"
+            style={{
+              background: 'rgba(239,68,68,0.1)',
+              border: '1px solid rgba(239,68,68,0.25)',
+              color: '#f87171',
+            }}
+          >
+            <span>{error}</span>
+            <button
               onClick={() => setError(null)}
-              className="float-right text-destructive hover:text-destructive/80"
+              className="ml-4 text-lg leading-none opacity-60 hover:opacity-100 transition-opacity"
             >
               ×
             </button>

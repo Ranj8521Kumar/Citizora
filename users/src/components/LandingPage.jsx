@@ -1,347 +1,521 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { 
-  MessageSquare, 
-  MapPin, 
-  TrendingUp, 
-  FileText, 
-  Construction, 
+import {
+  MessageSquare,
+  MapPin,
+  TrendingUp,
+  FileText,
+  Construction,
   CheckCircle,
   Users,
-  Clock
+  Clock,
+  ArrowRight,
+  Zap,
+  Shield,
+  Star,
+  Activity,
+  ChevronRight,
+  LayoutDashboard,
 } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
 import apiService from '../services/api';
-import landingImage from '../assets/landing.png';
 
+
+/* ── Tiny helpers ─────────────────────────────── */
+const statusClass = (s) => {
+  switch (s) {
+    case 'resolved':    return 'status-resolved';
+    case 'in_progress':
+    case 'in-progress': return 'status-progress';
+    default:            return 'status-submitted';
+  }
+};
+const priorityClass = (p) => {
+  switch (p) {
+    case 'urgent': return 'priority-urgent';
+    case 'high':   return 'priority-high';
+    case 'medium': return 'priority-medium';
+    default:       return 'priority-low';
+  }
+};
+const fmtDate = (d) => {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  catch { return '—'; }
+};
+
+/* ── Animated counter ─────────────────────────── */
+function Counter({ to, suffix = '' }) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!to) return;
+    let start = 0;
+    const step = Math.ceil(to / 40);
+    const t = setInterval(() => {
+      start += step;
+      if (start >= to) { setVal(to); clearInterval(t); }
+      else setVal(start);
+    }, 30);
+    return () => clearInterval(t);
+  }, [to]);
+  return <>{val}{suffix}</>;
+}
+
+/* ══════════════════════════════════════════════════
+   LANDING PAGE
+   ══════════════════════════════════════════════════ */
 export function LandingPage({ onNavigate, onLogin, onRegister, reports, user }) {
-  // Ensure reports is an array and provide default values
   const safeReports = Array.isArray(reports) ? reports : [];
   const [activeCitizens, setActiveCitizens] = useState(0);
   const [loadingCitizens, setLoadingCitizens] = useState(true);
-  
+
   const stats = {
-    totalReports: safeReports.length,
-    resolvedReports: safeReports.filter(r => r.status === 'resolved').length,
-    inProgressReports: safeReports.filter(r => r.status === 'in_progress').length,
-    activeUsers: activeCitizens
+    total:      safeReports.length,
+    resolved:   safeReports.filter(r => r.status === 'resolved').length,
+    inProgress: safeReports.filter(r => ['in_progress','in-progress'].includes(r.status)).length,
+    citizens:   activeCitizens,
   };
 
-  // Load active citizens data
   useEffect(() => {
-    const loadActiveCitizens = async () => {
-      try {
-        setLoadingCitizens(true);
-        const response = await apiService.getActiveCitizens();
-        console.log('Active citizens response:', response);
-        setActiveCitizens(response.data?.totalCitizens || 0);
-      } catch (error) {
-        console.error('Failed to load active citizens:', error);
-        setActiveCitizens(0);
-      } finally {
-        setLoadingCitizens(false);
-      }
-    };
-
-    loadActiveCitizens();
+    apiService.getActiveCitizens()
+      .then(r => setActiveCitizens(r.data?.totalCitizens || 0))
+      .catch(() => setActiveCitizens(0))
+      .finally(() => setLoadingCitizens(false));
   }, []);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'resolved':
-        return 'bg-secondary text-secondary-foreground';
-      case 'in-progress':
-        return 'bg-accent text-accent-foreground';
-      case 'submitted':
-        return 'bg-muted text-muted-foreground';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
+  /* ── How-it-works steps ── */
+  const steps = [
+    {
+      icon: FileText,
+      title: 'Report Issues',
+      desc: 'Snap a photo, pin the location, describe the problem. Done in under a minute.',
+      color: '#4f8ef7',
+      bg: 'rgba(79,142,247,0.1)',
+    },
+    {
+      icon: Construction,
+      title: 'Track Progress',
+      desc: 'Follow real-time status updates from submitted → in-progress → resolved.',
+      color: '#fb923c',
+      bg: 'rgba(251,146,60,0.1)',
+    },
+    {
+      icon: CheckCircle,
+      title: 'See Results',
+      desc: 'Rate completed work, give feedback, and keep your municipality accountable.',
+      color: '#34d399',
+      bg: 'rgba(52,211,153,0.1)',
+    },
+  ];
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'urgent':
-        return 'bg-destructive text-destructive-foreground';
-      case 'high':
-        return 'bg-accent text-accent-foreground';
-      case 'medium':
-        return 'bg-yellow-500 text-yellow-50';
-      case 'low':
-        return 'bg-muted text-muted-foreground';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Date not available';
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-      });
-    } catch {
-      return 'Date not available';
-    }
-  };
+  /* ── Platform highlights ── */
+  const highlights = [
+    { icon: Zap,      label: 'Instant Alerts',      sub: 'Real-time push notifications' },
+    { icon: Shield,   label: 'Secure & Private',     sub: 'End-to-end data protection' },
+    { icon: Activity, label: 'Live Status Board',    sub: 'Track every report live' },
+    { icon: Star,     label: 'Community Voting',     sub: 'Upvote priority issues' },
+  ];
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary to-primary/80 text-white py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-4xl lg:text-6xl font-bold mb-6">
-                Your Voice in Your Community
-              </h1>
-              <p className="text-xl lg:text-2xl mb-8 text-blue-100">
-                Report civic issues, track their progress, and help make your neighborhood better. 
-                Join thousands of citizens making a difference.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  size="lg" 
-                  variant="secondary"
-                  onClick={() => onNavigate('report')}
-                  className="text-lg px-8 py-3"
-                >
-                  <MessageSquare className="w-5 h-5 mr-2" />
-                  Report an Issue
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
-                  onClick={() => onNavigate('community')}
-                  className="text-lg px-8 py-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                >
-                  <MapPin className="w-5 h-5 mr-2" />
-                  View Community Reports
-                </Button>
-              </div>
-            </div>
-            <div className="relative">
-              <ImageWithFallback
-                src={landingImage}
-                alt="Community members working together"
-                className="rounded-lg shadow-2xl"
-                width={600}
-                height={400}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen" style={{ background: 'transparent' }}>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-                {stats.totalReports}
-              </div>
-              <div className="text-muted-foreground">Total Reports</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl lg:text-4xl font-bold text-green-600 mb-2">
-                {stats.resolvedReports}
-              </div>
-              <div className="text-muted-foreground">Issues Resolved</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl lg:text-4xl font-bold text-accent mb-2 text-red-600">
-                {stats.inProgressReports}
-              </div>
-              <div className="text-muted-foreground">In Progress</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl lg:text-4xl font-bold text-primary mb-2">
-                {loadingCitizens ? (
-                  <div className="animate-pulse">...</div>
-                ) : (
-                  stats.activeUsers
-                )}
-              </div>
-              <div className="text-muted-foreground">Active Citizens</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ══════════ HERO ══════════ */}
+      <section className="relative overflow-hidden pt-12 pb-28 lg:pt-20 lg:pb-36">
 
-      {/* How It Works Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold mb-4">How CivicConnect Works</h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Making civic engagement simple and effective for everyone
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FileText className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Report Issues</h3>
-              <p className="text-muted-foreground">
-                Easily report civic issues with photos, location, and detailed descriptions. 
-                Our simple form makes it quick and easy.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-[rgb(252,238,230)] rounded-full flex items-center justify-center mx-auto mb-4">
-                <Construction className="w-8 h-8 text-[rgb(235,96,23)]" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Track Progress</h3>
-              <p className="text-muted-foreground">
-                Monitor your reports in real-time with status updates and estimated resolution times. 
-                Stay informed every step of the way.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-[rgb(230,244,239)] rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-[rgb(5,150,105)]" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">See Results</h3>
-              <p className="text-muted-foreground">
-                Watch as your community improves. Rate completed work and provide feedback 
-                to help maintain quality standards.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center">
 
-      {/* Recent Reports Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Recent Community Reports</h2>
-              <p className="text-muted-foreground">See what's happening in your neighborhood</p>
+            {/* Eyebrow badge */}
+            <div className="inline-flex items-center gap-2 mb-6 animate-float-up">
+              <span
+                className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase"
+                style={{
+                  background: 'rgba(79,142,247,0.12)',
+                  border: '1px solid rgba(79,142,247,0.28)',
+                  color: '#7eb3ff',
+                  letterSpacing: '0.12em',
+                }}
+              >
+                ⚡ Digital Civic Engagement
+              </span>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => onNavigate('community')}
-              className="flex items-center space-x-2"
+
+            {/* Headline */}
+            <h1
+              className="mb-6 animate-float-up delay-100"
+              style={{ fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(2.4rem, 5vw, 4rem)', fontWeight: 900, lineHeight: 1.1 }}
             >
-              <TrendingUp className="w-4 h-4" />
-              <span>View All</span>
-            </Button>
+              <span style={{ color: '#e8f0fe' }}>Your Voice,</span>{' '}
+              <span className="gradient-text-blue">Your Community.</span>
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              className="text-lg lg:text-xl mb-10 max-w-2xl mx-auto animate-float-up delay-200"
+              style={{ color: 'hsl(215 20% 62%)', lineHeight: 1.75 }}
+            >
+              Report civic issues, track their resolution in real time, and join thousands of
+              citizens making a measurable difference in their neighbourhood.
+            </p>
+
+            {/* CTA buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-float-up delay-300">
+              <button
+                onClick={() => user ? onNavigate('report') : onRegister()}
+                className="btn-glow-blue flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-base font-semibold text-white"
+              >
+                <MessageSquare className="w-5 h-5" />
+                {user ? 'Report an Issue' : 'Get Started Free'}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('community')}
+                className="flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-base font-semibold transition-all duration-200"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(79,142,247,0.25)',
+                  color: '#a5c4fd',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(79,142,247,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(79,142,247,0.45)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(79,142,247,0.25)';
+                }}
+              >
+                <MapPin className="w-5 h-5" />
+                View Community Map
+              </button>
+            </div>
+
+            {/* Social proof */}
+            <div className="mt-10 flex flex-wrap justify-center gap-x-8 gap-y-3 animate-float-up delay-400">
+              {[
+                { icon: Users,    text: `${loadingCitizens ? '...' : activeCitizens} active citizens` },
+                { icon: Shield,   text: 'Secure & encrypted' },
+                { icon: Activity, text: 'Live status updates' },
+              ].map(({ icon: Icon, text }) => (
+                <div key={text} className="flex items-center gap-2" style={{ color: 'hsl(215 20% 55%)' }}>
+                  <Icon className="w-4 h-4" style={{ color: '#4f8ef7' }} />
+                  <span className="text-sm">{text}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {safeReports.slice(0, 6).map((report) => (
-              <Card key={report._id || report.id || Math.random()} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge className={getStatusColor(report.status)}>
-                      {(report.status || 'submitted').replace('-', ' ')}
-                    </Badge>
-                    <Badge variant="outline" className={getPriorityColor(report.priority)}>
-                      {report.priority || 'medium'}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg">{report.title || 'Untitled Report'}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {report.description || 'No description provided'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      {report.location?.address?.description || report.location?.description || 'Location not specified'}
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {formatDate(report.createdAt)}
-                      </div>
-                      <div className="flex items-center">
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                        {(report.votes || 0)} votes
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+        </div>
+      </section>
+
+      {/* ══════════ STATS ══════════ */}
+      <section className="relative -mt-14 pb-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            className="glass rounded-2xl grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x animate-float-up delay-500"
+            style={{ divideColor: 'rgba(79,142,247,0.1)' }}
+          >
+            {[
+              { label: 'Total Reports',    val: stats.total,      suffix: '+', color: '#4f8ef7' },
+              { label: 'Issues Resolved',  val: stats.resolved,   suffix: '',  color: '#34d399' },
+              { label: 'In Progress',      val: stats.inProgress, suffix: '',  color: '#fbbf24' },
+              { label: 'Active Citizens',  val: stats.citizens,   suffix: '+', color: '#a78bfa' },
+            ].map(({ label, val, suffix, color }) => (
+              <div key={label} className="flex flex-col items-center justify-center py-8 px-4 gap-1">
+                <span className="text-3xl lg:text-4xl font-black" style={{ fontFamily: "'Outfit',sans-serif", color }}>
+                  <Counter to={val} suffix={suffix} />
+                </span>
+                <span className="text-xs font-medium tracking-wide" style={{ color: 'hsl(215 20% 52%)' }}>
+                  {label}
+                </span>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-primary text-white">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          {user ? (
-            /* Thank you message for logged-in users */
-            <div>
-              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-                Thank You for Being Part of Our Community!
-              </h2>
-              <p className="text-xl mb-8 text-blue-100">
-                Welcome back, {user.name || user.username || 'Citizen'}! Your contributions are making a real difference in our community.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="lg" 
-                  variant="secondary"
-                  onClick={() => onNavigate('report')}
-                  className="text-lg px-8 py-3"
+      {/* ══════════ HOW IT WORKS ══════════ */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          <div className="text-center mb-14">
+            <div className="section-divider" />
+            <p className="text-xs font-semibold tracking-[0.18em] uppercase mb-3" style={{ color: '#4f8ef7' }}>
+              Simple Process
+            </p>
+            <h2 style={{ color: '#e8f0fe' }}>How CivicConnect Works</h2>
+            <p className="mt-3 text-base max-w-xl mx-auto" style={{ color: 'hsl(215 20% 57%)' }}>
+              From reporting to resolution — civic engagement made effortless.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {steps.map(({ icon: Icon, title, desc, color, bg }, i) => (
+              <div
+                key={title}
+                className="glass-card rounded-2xl p-8 text-center animate-float-up"
+                style={{ animationDelay: `${i * 0.12}s` }}
+              >
+                {/* Step number */}
+                <div className="text-xs font-bold tracking-widest mb-5" style={{ color: 'hsl(215 20% 40%)' }}>
+                  STEP {String(i + 1).padStart(2, '0')}
+                </div>
+
+                {/* Icon orb */}
+                <div
+                  className="feature-orb mx-auto mb-5"
+                  style={{ background: bg }}
                 >
-                  <MessageSquare className="w-5 h-5 mr-2" />
-                  Report New Issue
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => onNavigate('dashboard')}
-                  className="text-lg px-8 py-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                >
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  View My Dashboard
-                </Button>
+                  <Icon className="w-8 h-8" style={{ color }} />
+                </div>
+
+                <h3 className="mb-3" style={{ color: '#e8f0fe' }}>{title}</h3>
+                <p className="text-sm leading-relaxed" style={{ color: 'hsl(215 20% 57%)' }}>{desc}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ PLATFORM HIGHLIGHTS ══════════ */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {highlights.map(({ icon: Icon, label, sub }, i) => (
+              <div
+                key={label}
+                className="glass-card rounded-xl px-5 py-6 flex flex-col items-center text-center gap-3 animate-float-up"
+                style={{ animationDelay: `${i * 0.08}s` }}
+              >
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.2)' }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: '#4f8ef7' }} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold mb-0.5" style={{ color: '#e8f0fe' }}>{label}</div>
+                  <div className="text-xs" style={{ color: 'hsl(215 20% 52%)' }}>{sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ RECENT REPORTS ══════════ */}
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Header row */}
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+            <div>
+              <div className="section-divider !mx-0 mb-3" />
+              <p className="text-xs font-semibold tracking-[0.18em] uppercase mb-2" style={{ color: '#4f8ef7' }}>
+                Live Feed
+              </p>
+              <h2 style={{ color: '#e8f0fe' }}>Community Reports</h2>
+              <p className="mt-1 text-sm" style={{ color: 'hsl(215 20% 57%)' }}>
+                Real issues. Real progress. See what's happening near you.
+              </p>
+            </div>
+            <button
+              onClick={() => onNavigate('community')}
+              className="self-start sm:self-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+              style={{
+                background: 'rgba(79,142,247,0.1)',
+                border: '1px solid rgba(79,142,247,0.25)',
+                color: '#7eb3ff',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(79,142,247,0.18)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(79,142,247,0.1)'}
+            >
+              <TrendingUp className="w-4 h-4" />
+              View All Reports
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {safeReports.length === 0 ? (
+            /* Empty state */
+            <div
+              className="glass rounded-2xl py-20 flex flex-col items-center gap-4 text-center"
+            >
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2"
+                style={{ background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.2)' }}
+              >
+                <FileText className="w-8 h-8" style={{ color: '#4f8ef7' }} />
+              </div>
+              <h3 style={{ color: '#e8f0fe' }}>No reports yet</h3>
+              <p className="max-w-sm text-sm" style={{ color: 'hsl(215 20% 52%)' }}>
+                Be the first to report a civic issue in your community.
+              </p>
+              <button
+                onClick={() => user ? onNavigate('report') : onRegister()}
+                className="btn-glow-blue mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white"
+              >
+                Report First Issue
+              </button>
             </div>
           ) : (
-            /* Original CTA for non-logged-in users */
-            <div>
-              <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-                Ready to Make a Difference?
-              </h2>
-              <p className="text-xl mb-8 text-blue-100">
-                Join your neighbors in building a better community. Your voice matters.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="lg" 
-                  variant="secondary"
-                  onClick={onRegister}
-                  className="text-lg px-8 py-3"
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {safeReports.slice(0, 6).map((report, i) => (
+                <div
+                  key={report._id || report.id || i}
+                  className="glass-card rounded-2xl p-5 flex flex-col gap-3 animate-float-up"
+                  style={{ animationDelay: `${i * 0.07}s` }}
                 >
-                  Get Started Today
-                </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={onLogin}
-                  className="text-lg px-8 py-3 bg-white/10 border-white/20 text-white hover:bg-white/20"
-                >
-                  Sign In
-                </Button>
-              </div>
+                  {/* Status + priority row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`${statusClass(report.status)} text-[0.7rem] font-semibold px-2.5 py-1 rounded-full`}
+                    >
+                      {(report.status || 'submitted').replace(/_/g, ' ').replace(/-/g, ' ')}
+                    </span>
+                    <span
+                      className={`${priorityClass(report.priority)} text-[0.7rem] font-semibold px-2.5 py-1 rounded-full`}
+                    >
+                      {report.priority || 'medium'}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h4 className="font-semibold leading-snug line-clamp-1" style={{ color: '#e8f0fe' }}>
+                    {report.title || 'Untitled Report'}
+                  </h4>
+
+                  {/* Description */}
+                  <p className="text-sm line-clamp-2 flex-1" style={{ color: 'hsl(215 20% 55%)' }}>
+                    {report.description || 'No description provided.'}
+                  </p>
+
+                  {/* Meta row */}
+                  <div
+                    className="flex items-center justify-between text-xs pt-3"
+                    style={{ borderTop: '1px solid rgba(79,142,247,0.1)', color: 'hsl(215 20% 48%)' }}
+                  >
+                    <div className="flex items-center gap-1 truncate">
+                      <MapPin className="w-3 h-3 shrink-0" style={{ color: '#4f8ef7' }} />
+                      <span className="truncate">
+                        {report.location?.address?.description || report.location?.description || 'Location N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {fmtDate(report.createdAt)}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="w-3 h-3" />
+                        {report.votes || 0}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </section>
+
+      {/* ══════════ CTA SECTION ══════════ */}
+      <section className="py-20 relative overflow-hidden">
+        {/* Glow backdrop */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 opacity-30"
+            style={{ background: 'linear-gradient(135deg, rgba(79,142,247,0.12) 0%, rgba(10,173,222,0.08) 50%, rgba(167,139,250,0.06) 100%)' }} />
+        </div>
+
+        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <div className="section-divider mb-4" />
+
+          {user ? (
+            <>
+              <h2 className="mb-4" style={{ color: '#e8f0fe' }}>
+                Welcome back,{' '}
+                <span className="gradient-text-blue">{user.firstName || user.name || 'Citizen'}</span>!
+              </h2>
+              <p className="mb-10 text-base" style={{ color: 'hsl(215 20% 57%)' }}>
+                Your contributions are making a real difference. Keep the momentum going.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => onNavigate('report')}
+                  className="btn-glow-blue flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl text-base font-semibold text-white"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  Report New Issue
+                </button>
+                <button
+                  onClick={() => onNavigate('dashboard')}
+                  className="btn-glow-cyan flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl text-base font-semibold text-white"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  My Dashboard
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2 className="mb-4" style={{ color: '#e8f0fe' }}>
+                Ready to Make a{' '}
+                <span className="gradient-text-civic">Difference?</span>
+              </h2>
+              <p className="mb-10 text-base" style={{ color: 'hsl(215 20% 57%)' }}>
+                Join your neighbours in building a better community. Your voice matters —
+                and it only takes 60 seconds to get started.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={onRegister}
+                  className="btn-glow-blue flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl text-base font-semibold text-white"
+                >
+                  Create Free Account
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={onLogin}
+                  className="flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-xl text-base font-semibold transition-all duration-200"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(79,142,247,0.25)',
+                    color: '#a5c4fd',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(79,142,247,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                >
+                  Sign In
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Trust badges */}
+          <div className="mt-12 flex flex-wrap justify-center gap-6">
+            {[
+              '🔒 Bank-grade encryption',
+              '🌍 Open civic data',
+              '⚡ Real-time updates',
+            ].map(t => (
+              <span key={t} className="text-xs font-medium" style={{ color: 'hsl(215 20% 45%)' }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ FOOTER ══════════ */}
+      <footer
+        className="py-8 text-center"
+        style={{ borderTop: '1px solid rgba(79,142,247,0.1)', color: 'hsl(215 20% 40%)' }}
+      >
+        <p className="text-sm">
+          © 2025 <span style={{ color: '#4f8ef7' }}>Citizora</span> · Built for digital governance &amp; civic engagement
+        </p>
+        <div className="flex justify-center gap-2 mt-3">
+          {['#4f8ef7','#34d399','#fb923c'].map(c => (
+            <span key={c} className="w-2 h-2 rounded-full inline-block" style={{ background: c }} />
+          ))}
+        </div>
+      </footer>
     </div>
   );
 }

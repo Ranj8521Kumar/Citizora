@@ -1,0 +1,23 @@
+# Environment variables — NEVER commit these
+.env
+
+# Hardhat compilation artifacts
+artifacts/
+cache/
+
+# Deployment outputs (contain contract addresses — commit these if you want)
+# deployments/
+
+# Dependencies
+node_modules/
+
+# Coverage reports
+coverage/
+coverage.json
+
+# TypeScript build
+typechain/
+typechain-types/
+
+# Hardhat Ignition
+ignition/deployments/

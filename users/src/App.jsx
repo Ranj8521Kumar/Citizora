@@ -153,11 +153,19 @@ function GlobalBackground() {
 
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('landing');
+  const [currentPage, setCurrentPageState] = useState(
+    () => localStorage.getItem('currentPage') || 'landing'
+  );
+  const setCurrentPage = (page) => {
+    localStorage.setItem('currentPage', page);
+    setCurrentPageState(page);
+  };
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [reports, setReports] = useState([]);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, total: 0 });
+  const [reportStats, setReportStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [resetToken, setResetToken] = useState(null);
@@ -207,11 +215,19 @@ export default function App() {
             setUser(null);
           } else {
             setUser(userData);
+            // Only redirect to dashboard on fresh login (landing page).
+            // On refresh, restore whatever page the user was on.
+            const saved = localStorage.getItem('currentPage');
+            if (!saved || saved === 'landing') {
+              setCurrentPage('dashboard');
+            }
           }
         }
       } catch (error) {
         console.error('Failed to initialize app:', error);
         apiService.clearToken();
+        localStorage.removeItem('currentPage');
+        setCurrentPage('landing');
       } finally {
         setLoading(false);
       }
@@ -221,44 +237,47 @@ export default function App() {
   }, []);
 
   // Define loadReports with useCallback
-  const loadReports = useCallback(async () => {
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await apiService.getMyStats();
+      if (res?.data) setReportStats(res.data);
+    } catch (e) {
+      console.error('Failed to load stats:', e);
+    }
+  }, []);
+
+  const loadReports = useCallback(async (page = 1) => {
     try {
       setError(null); // Clear any previous errors
       console.log('Loading reports for user:', user);
-      
+
       // Always show loading indicator on refresh
       setLoading(true);
-      
+
       try {
         // Add a timestamp parameter to bust any cache
-        const reportsData = await apiService.getReports({ 
-          _t: new Date().getTime() 
+        const reportsData = await apiService.getReports({
+          _t: new Date().getTime(),
+          page,
+          limit: 10,
         });
         console.log('Reports data received from API:', reportsData);
-        
-        // Process the reports data
-        let processedReports = [];
-        
-        // Handle different data structures
-        if (Array.isArray(reportsData)) {
-          // Direct array of reports
-          processedReports = reportsData;
-        } else if (typeof reportsData === 'object') {
-          // Could be an object with a reports array or data property
-          if (reportsData.data) {
-            if (Array.isArray(reportsData.data)) {
-              processedReports = reportsData.data;
-            } else if (typeof reportsData.data === 'object') {
-              // It might be a single report or have a nested structure
-              processedReports = [reportsData.data];
-            }
-          } else if (reportsData.reports && Array.isArray(reportsData.reports)) {
-            processedReports = reportsData.reports;
-          } else {
-            // If no recognizable structure, treat the object itself as a single report
-            processedReports = [reportsData];
-          }
+
+        // Capture pagination info
+        if (reportsData.pagination) {
+          setPagination({
+            currentPage: reportsData.pagination.currentPage || page,
+            totalPages: reportsData.pagination.totalPages || 1,
+            total: reportsData.total || 0,
+          });
         }
+
+        // Extract reports array from the new return format
+        let processedReports = Array.isArray(reportsData.reports)
+          ? reportsData.reports
+          : Array.isArray(reportsData)
+          ? reportsData
+          : [];
         
         // Ensure all reports are complete objects with at least a status field
         processedReports = processedReports
@@ -275,36 +294,8 @@ export default function App() {
         
         console.log('Reports data for Dashboard:', processedReports);
         
-        // Update reports state using functional update to avoid dependency
-        setReports(prev => {
-          // If we're adding a new report, it's already in the state from handleSubmitReport
-          // So we need to merge intelligently without duplicating
-          if (prev && prev.length > 0 && processedReports.length > 0) {
-            // Create a map of existing reports by ID
-            const existingReportsMap = new Map(
-              prev.map(report => [report._id, report])
-            );
-            
-            // Update existing reports and add new ones
-            processedReports.forEach(report => {
-              if (report._id && existingReportsMap.has(report._id)) {
-                // Update existing report with new data, preserving any client-side state
-                const existingReport = existingReportsMap.get(report._id);
-                existingReportsMap.set(report._id, { ...existingReport, ...report });
-              } else if (report._id) {
-                // Add new report
-                existingReportsMap.set(report._id, report);
-              }
-            });
-            
-            // Convert map back to array and sort by creation date (newest first)
-            return Array.from(existingReportsMap.values())
-              .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
-          }
-          
-          // If no existing reports or complete refresh needed, return new reports
-          return processedReports;
-        });
+        // Replace reports with the current page's data (no merge — pagination)
+        setReports(processedReports);
       } catch (error) {
         console.error('Failed to fetch reports from API:', error);
         setError('Failed to load reports. Please try again later.');
@@ -320,12 +311,12 @@ export default function App() {
     }
   }, [user]); // We're using functional updates, so we don't need reports in the dependency array
   
-  // Load reports when user is authenticated
+  // Load reports and stats when user is authenticated
   useEffect(() => {
     console.log('Load reports effect triggered', { user });
-    // Always load reports on component mount, even without user for public reports
     loadReports();
-  }, [loadReports, user]);
+    if (user) loadStats();
+  }, [loadReports, loadStats, user]);
 
   const handleLogin = (userData) => {
     // Make sure the user has the 'user' role
@@ -349,6 +340,7 @@ export default function App() {
 
   const handleLogout = () => {
     apiService.clearToken();
+    localStorage.removeItem('currentPage');
     setUser(null);
     setReports([]);
     setCurrentPage('landing');
@@ -478,11 +470,14 @@ export default function App() {
         )}
         
         {currentPage === 'dashboard' && user && (
-          <Dashboard 
+          <Dashboard
             user={user}
             reports={reports}
+            pagination={pagination}
+            reportStats={reportStats}
+            onPageChange={loadReports}
             onNavigate={setCurrentPage}
-            onRefresh={loadReports}
+            onRefresh={() => { loadReports(); loadStats(); }}
           />
         )}
         

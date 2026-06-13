@@ -26,6 +26,7 @@ router.post('/', reportController.createReport);
  * @access Private (all authenticated users)
  */
 router.get('/', reportController.getReports);
+router.get('/my-stats', reportController.getMyStats);
 
 /**
  * @route GET /api/reports/:id
@@ -54,6 +55,13 @@ router.patch('/:id/assign', restrictTo('admin'), reportController.assignReport);
  * @access Private (report owner only)
  */
 router.post('/:id/feedback', reportController.addFeedback);
+
+/**
+ * @route POST /api/reports/:id/vote
+ * @desc Toggle a community vote on a report (and reward CIVI tokens)
+ * @access Private
+ */
+router.post('/:id/vote', reportController.voteReport);
 
 /**
  * @route POST /api/reports/:id/images

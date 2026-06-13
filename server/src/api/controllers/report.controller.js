@@ -8,6 +8,7 @@ const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
 const { ApiError } = require('../middleware/error.middleware');
 const { upload, uploadToCloudinary, deleteFromCloudinary } = require('../services/upload.service');
+const blockchain = require('../services/blockchain.service');
 
 /**
  * Create a new report
@@ -70,6 +71,17 @@ exports.createReport = async (req, res, next) => {
 
     // Create new report
     const report = await Report.create(reportData);
+
+    // Blockchain: record audit + reward citizen (fire-and-forget)
+    const submitter = await User.findById(req.user._id).select('walletAddress reportCount');
+    const newReportCount = (submitter.reportCount || 0) + 1;
+    await User.findByIdAndUpdate(req.user._id, { $inc: { reportCount: 1, civiTokensEarned: 10 } });
+    setImmediate(() => {
+      blockchain.recordReportCreated(
+        report._id.toString(), title, description, category, submitter.walletAddress
+      ).catch(() => {});
+      blockchain.rewardReportSubmitted(submitter.walletAddress, newReportCount).catch(() => {});
+    });
 
     // Notify admins about new report
     const admins = await User.find({ role: 'admin' });
@@ -349,6 +361,29 @@ exports.updateReportStatus = async (req, res, next) => {
     // Add timeline event
     await report.addTimelineEvent(status, comment, req.user._id);
 
+    // Blockchain: audit trail + resolved rewards (fire-and-forget)
+    setImmediate(async () => {
+      try {
+        const actorWallet = req.user.walletAddress || null;
+        await blockchain.recordStatusChange(report._id.toString(), status, actorWallet);
+
+        if (status === 'resolved') {
+          const [reporter, employee] = await Promise.all([
+            User.findById(report.submittedBy).select('walletAddress civiTokensEarned'),
+            report.assignedTo ? User.findById(report.assignedTo).select('walletAddress resolvedCount') : null,
+          ]);
+          const employeeResolvedCount = employee ? (employee.resolvedCount || 0) + 1 : 0;
+          if (employee) {
+            await User.findByIdAndUpdate(report.assignedTo, { $inc: { resolvedCount: 1, civiTokensEarned: 20 } });
+          }
+          await User.findByIdAndUpdate(report.submittedBy, { $inc: { civiTokensEarned: 25 } });
+          await blockchain.rewardReportResolved(
+            reporter?.walletAddress, employee?.walletAddress, employeeResolvedCount
+          );
+        }
+      } catch (e) { /* non-blocking */ }
+    });
+
     // Notify the report submitter
     await Notification.createNotification({
       recipient: report.submittedBy,
@@ -467,6 +502,18 @@ exports.addFeedback = async (req, res, next) => {
     // Update status to closed
     await report.addTimelineEvent('closed', 'Feedback provided and report closed', req.user._id);
 
+    // Blockchain: reward feedback giver (fire-and-forget)
+    setImmediate(async () => {
+      try {
+        const user = await User.findByIdAndUpdate(
+          req.user._id,
+          { $inc: { feedbackCount: 1, civiTokensEarned: 5 } },
+          { new: true }
+        ).select('walletAddress feedbackCount');
+        await blockchain.rewardFeedback(user.walletAddress, user.feedbackCount);
+      } catch (e) { /* non-blocking */ }
+    });
+
     // Notify assigned employee if any
     if (report.assignedTo) {
       await Notification.createNotification({
@@ -487,6 +534,67 @@ exports.addFeedback = async (req, res, next) => {
         report
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/reports/:id/vote — toggle community vote on a report
+exports.getMyStats = async (req, res, next) => {
+  try {
+    const query = { submittedBy: req.user._id };
+    const [total, submitted, assigned, inProgress, resolved, closed] = await Promise.all([
+      Report.countDocuments(query),
+      Report.countDocuments({ ...query, status: 'submitted' }),
+      Report.countDocuments({ ...query, status: 'assigned' }),
+      Report.countDocuments({ ...query, status: 'in_progress' }),
+      Report.countDocuments({ ...query, status: 'resolved' }),
+      Report.countDocuments({ ...query, status: 'closed' }),
+    ]);
+    res.status(200).json({
+      success: true,
+      data: { total, submitted, assigned, inProgress, resolved, closed, pending: submitted + assigned },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.voteReport = async (req, res, next) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) return next(new ApiError('Report not found', 404));
+
+    const userId = req.user._id.toString();
+    const alreadyVoted = report.votedBy && report.votedBy.includes(userId);
+
+    if (alreadyVoted) {
+      report.votes = Math.max(0, (report.votes || 1) - 1);
+      report.votedBy = (report.votedBy || []).filter((id) => id.toString() !== userId);
+    } else {
+      report.votes = (report.votes || 0) + 1;
+      if (!report.votedBy) report.votedBy = [];
+      report.votedBy.push(userId);
+
+      // Blockchain: reward voter (fire-and-forget)
+      setImmediate(async () => {
+        try {
+          const voter = await User.findByIdAndUpdate(
+            req.user._id,
+            { $inc: { voteCount: 1, civiTokensEarned: 1 } },
+            { new: true }
+          ).select('walletAddress voteCount');
+          if (voter?.walletAddress) {
+            await blockchain.rewardVote(voter.walletAddress);
+            const { BADGE } = require('../services/blockchain.service');
+            if (voter.voteCount === 100) await blockchain.mintBadge(voter.walletAddress, BADGE.TOP_VOTER);
+          }
+        } catch (e) { /* non-blocking */ }
+      });
+    }
+
+    await report.save();
+    res.json({ success: true, data: { votes: report.votes, voted: !alreadyVoted } });
   } catch (error) {
     next(error);
   }

@@ -21,14 +21,14 @@ router.get('/active-citizens', async (req, res, next) => {
     
     // Get basic info of recent users (last 20 registered users)
     const recentUsers = await User.find()
-      .select('firstName lastName email createdAt profileImage')
+      .select('firstName lastName email createdAt profileImage civiTokensEarned reportCount')
       .sort({ createdAt: -1 })
       .limit(20);
 
-    // Get all users for the community display
+    // Get all users for the community display, sorted by civic contribution
     const allUsers = await User.find()
-      .select('firstName lastName email createdAt profileImage')
-      .sort({ createdAt: -1 });
+      .select('firstName lastName email createdAt profileImage civiTokensEarned reportCount')
+      .sort({ civiTokensEarned: -1, createdAt: -1 });
 
     res.status(200).json({
       success: true,

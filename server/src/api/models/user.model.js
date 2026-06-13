@@ -60,7 +60,36 @@ const userSchema = new mongoose.Schema({
     default: null
   },
   resetPasswordToken: String,
-  resetPasswordExpires: Date
+  resetPasswordExpires: Date,
+
+  // Blockchain / rewards
+  walletAddress: {
+    type: String,
+    default: null,
+    lowercase: true,
+    sparse: true,
+    unique: true,
+  },
+  civiTokensEarned: {
+    type: Number,
+    default: 0,
+  },
+  reportCount: {
+    type: Number,
+    default: 0,
+  },
+  resolvedCount: {
+    type: Number,
+    default: 0,
+  },
+  feedbackCount: {
+    type: Number,
+    default: 0,
+  },
+  voteCount: {
+    type: Number,
+    default: 0,
+  },
 }, {
   timestamps: true // Adds createdAt and updatedAt fields
 });

@@ -89,7 +89,15 @@ const reportSchema = new mongoose.Schema({
     },
     comment: String,
     submittedAt: Date
-  }
+  },
+  votes: {
+    type: Number,
+    default: 0,
+  },
+  votedBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
 }, {
   timestamps: true // Adds createdAt and updatedAt fields
 });

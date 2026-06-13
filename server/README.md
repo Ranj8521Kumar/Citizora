@@ -42,7 +42,9 @@ See `.env` for all configuration options. Key variables:
 - `MAPBOX_API_KEY`
 - `ADMIN_CREATION_TOKEN`
 - `FABRIC_CONNECTION_PROFILE`, `FABRIC_WALLET_PATH`, `FABRIC_USER_ID`
-- `ETH_RPC_URL`, `ETH_PRIVATE_KEY`, `REWARD_CONTRACT_ADDRESS`
+- `BLOCKCHAIN_RPC_URL` — Polygon Mumbai/Mainnet RPC (Alchemy/Infura)
+- `BLOCKCHAIN_PRIVATE_KEY` — Backend minter wallet private key
+- `CONTRACT_CIVI_TOKEN`, `CONTRACT_CIVI_BADGE`, `CONTRACT_CIVI_AUDIT` — Deployed contract addresses (see `blockchain/deployments/`)
 
 ## Getting Started
 1. Install dependencies:
@@ -55,9 +57,12 @@ See `.env` for all configuration options. Key variables:
    npm start
    ```
 
-## Blockchain Integration
-- **Hyperledger Fabric**: Used for private, auditable storage of user/employee data hashes. Only authorized parties can access this data.
-- **Ethereum**: Used for transparent reward transactions. All reward events are publicly verifiable.
+## Blockchain Integration (Polygon)
+- **CiviToken (ERC-20)**: Citizens and field workers earn CIVI tokens for civic participation.
+- **CiviBadge (ERC-721)**: Soulbound (non-transferable) NFT achievement badges.
+- **CiviAudit**: Every report status change is recorded as an on-chain event for tamper-proof audit trails.
+- Deploy contracts: `cd ../blockchain && npx hardhat run scripts/deploy.js --network mumbai`
+- All blockchain calls are **fire-and-forget** — a blockchain outage never breaks core app functionality.
 
 ## Testing
 - Postman collections are available in the `server/` directory for API testing.

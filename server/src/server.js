@@ -56,6 +56,7 @@ app.use((req, res, next) => {
 
 // Import admin routes
 const adminRoutes = require('./api/routes/admin.routes');
+const blockchainRoutes = require('./api/routes/blockchain.routes');
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -65,6 +66,7 @@ app.use('/api/maps', authMiddleware, mapRoutes);
 app.use('/api/notifications', authMiddleware, notificationRoutes);
 app.use('/api/fieldworker', fieldWorkerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/blockchain', blockchainRoutes);
 
 // Health check route
 app.get('/health', (_, res) => {

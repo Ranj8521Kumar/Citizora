@@ -321,7 +321,11 @@ class ApiService {
       });
       
       console.log('Extracted reports with images:', reports);
-      return reports;
+      return {
+        reports,
+        pagination: response.pagination || null,
+        total: response.total || reports.length,
+      };
     } catch (error) {
       console.error('Failed to fetch reports from API:', error.message);
       // Return empty array on error instead of mock data
@@ -451,11 +455,48 @@ class ApiService {
     }
   }
 
+  async getMyStats() {
+    return await this.request('/reports/my-stats');
+  }
+
   // Get active citizens data
   async getActiveCitizens() {
     return await this.request('/users/active-citizens', {
       method: 'GET',
     });
+  }
+
+  // ─── Blockchain / Rewards ───────────────────────────────────────────────
+
+  async getMyRewards() {
+    return await this.request('/blockchain/me');
+  }
+
+  async connectWallet(walletAddress, signature) {
+    return await this.request('/blockchain/connect-wallet', {
+      method: 'POST',
+      body: JSON.stringify({ walletAddress, signature }),
+    });
+  }
+
+  async disconnectWallet() {
+    return await this.request('/blockchain/disconnect-wallet', { method: 'DELETE' });
+  }
+
+  async getTokenBalance(walletAddress) {
+    return await this.request(`/blockchain/balance/${walletAddress}`);
+  }
+
+  async getUserBadges(walletAddress) {
+    return await this.request(`/blockchain/badges/${walletAddress}`);
+  }
+
+  async getReportAudit(reportId) {
+    return await this.request(`/blockchain/audit/${reportId}`);
+  }
+
+  async voteReport(reportId) {
+    return await this.request(`/reports/${reportId}/vote`, { method: 'POST' });
   }
 }
 

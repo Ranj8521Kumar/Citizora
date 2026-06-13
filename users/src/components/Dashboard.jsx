@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import WalletConnect from './WalletConnect';
+import RewardsPanel from './RewardsPanel';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -81,7 +83,7 @@ const formatStructuredAddress = (address, locationData) => {
   return parts.join(', ') || 'Location not specified';
 };
 
-export function Dashboard({ user, reports, onNavigate, onRefresh }) {
+export function Dashboard({ user, reports, pagination, reportStats, onPageChange, onNavigate, onRefresh }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReport, setSelectedReport] = useState(null);
@@ -115,25 +117,6 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
               JSON.stringify(updatedSelectedReport) !== JSON.stringify(currentSelectedReport)) {
             console.log('Updating selected report with latest data:', updatedSelectedReport);
             setSelectedReport(updatedSelectedReport);
-          }
-        } 
-        // Always select first report on load if none is selected
-        else if (!currentSelectedReport) {
-          try {
-            // Ensure the report object is safe to use as state
-            const safeReport = { ...reports[0] };
-            
-            // Handle potential problematic fields that might be objects
-            if (safeReport.location && typeof safeReport.location === 'object') {
-              if (typeof safeReport.location.toString !== 'function') {
-                safeReport.location = JSON.stringify(safeReport.location);
-              }
-            }
-            
-            setSelectedReport(safeReport);
-            console.log('Auto-selected first report:', safeReport);
-          } catch (err) {
-            console.error('Error selecting report:', err);
           }
         }
       }
@@ -282,14 +265,22 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
     }
   });
   
-  // Calculate report stats with normalized status values
-  const stats = {
-    total: normalizedReports.length,
-    submitted: normalizedReports.filter(r => r.status === 'submitted').length,
-    assigned: normalizedReports.filter(r => r.status === 'assigned').length,
-    inProgress: normalizedReports.filter(r => r.status === 'in-progress').length,
-    resolved: normalizedReports.filter(r => r.status === 'resolved').length,
-  };
+  // Use server-side stats (all pages) when available, fall back to current page counts
+  const stats = reportStats
+    ? {
+        total: reportStats.total,
+        submitted: reportStats.submitted,
+        assigned: reportStats.assigned,
+        inProgress: reportStats.inProgress,
+        resolved: reportStats.resolved,
+      }
+    : {
+        total: normalizedReports.length,
+        submitted: normalizedReports.filter(r => r.status === 'submitted').length,
+        assigned: normalizedReports.filter(r => r.status === 'assigned').length,
+        inProgress: normalizedReports.filter(r => r.status === 'in-progress').length,
+        resolved: normalizedReports.filter(r => r.status === 'resolved').length,
+      };
 
   const formatDateTime = (dateString) => {
     if (!dateString) return 'Date/time not available';
@@ -551,7 +542,7 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold">{stats.submitted + stats.assigned}</p>
+                  <p className="text-2xl font-bold">{reportStats ? reportStats.pending : stats.submitted + stats.assigned}</p>
                 </div>
                 <AlertCircle className="w-8 h-8 text-blue-500" />
               </div>
@@ -677,12 +668,55 @@ export function Dashboard({ user, reports, onNavigate, onRefresh }) {
                     })}
                   </div>
                 )}
+
+                {/* Pagination */}
+                {pagination && pagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+                    <span className="text-sm text-muted-foreground">
+                      Page {pagination.currentPage} of {pagination.totalPages} &middot; {pagination.total} reports
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={pagination.currentPage <= 1}
+                        onClick={() => onPageChange(pagination.currentPage - 1)}
+                      >
+                        ← Prev
+                      </Button>
+                      {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                        <Button
+                          key={p}
+                          variant={p === pagination.currentPage ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => onPageChange(p)}
+                        >
+                          {p}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={pagination.currentPage >= pagination.totalPages}
+                        onClick={() => onPageChange(pagination.currentPage + 1)}
+                      >
+                        Next →
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Report Detail Sidebar */}
+          {/* Report Detail Sidebar / Rewards Panel */}
           <div>
+            {!selectedReport && (
+              <div className="space-y-4 mb-4">
+                <WalletConnect user={user} />
+                <RewardsPanel user={user} />
+              </div>
+            )}
             {selectedReport ? (
               <Card>
                 <CardHeader>

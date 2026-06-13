@@ -194,7 +194,12 @@ export function ActiveCitizens() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {citizen.civiTokensEarned > 0 && (
+                          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-400/30 font-semibold">
+                            🪙 {citizen.civiTokensEarned} CIVI
+                          </Badge>
+                        )}
                         <Badge variant="secondary">
                           <Clock className="w-3 h-3 mr-1" />
                           Active Member
